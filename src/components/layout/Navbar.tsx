@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, ShieldCheck } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Menu, X, ShieldCheck, LogOut, User as UserIcon } from 'lucide-react';
 import { Button } from '../ui/Button';
+import { Badge } from '../ui/Badge';
+import { useAuth } from '../../hooks/useAuth';
 
 export const Navbar: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, profile, isAdmin, signOut } = useAuth();
 
   const navLinks = [
     { label: 'How It Works', path: '/#how-it-works' },
@@ -14,12 +18,17 @@ export const Navbar: React.FC = () => {
     { label: 'Dashboard', path: '/dashboard' },
   ];
 
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
+  };
+
   return (
     <header
       style={{
         position: 'sticky',
         top: 0,
-        backgroundColor: 'rgba(251, 249, 244, 0.92)',
+        backgroundColor: 'rgba(251, 249, 244, 0.95)',
         backdropFilter: 'blur(12px)',
         borderBottom: '1px solid var(--border-subtle)',
         zIndex: 'var(--z-sticky)',
@@ -105,23 +114,69 @@ export const Navbar: React.FC = () => {
           })}
         </nav>
 
-        {/* Action CTAs */}
+        {/* Action CTAs & Auth Awareness */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-          <Link to="/admin" title="Admin Portal">
-            <Button variant="ghost" size="sm" leftIcon={<ShieldCheck size={16} />}>
-              Admin
-            </Button>
-          </Link>
-          <Link to="/login">
-            <Button variant="outline" size="sm">
-              Sign In
-            </Button>
-          </Link>
-          <Link to="/subscribe">
-            <Button variant="primary" size="sm">
-              Subscribe
-            </Button>
-          </Link>
+          {isAdmin && (
+            <Link to="/admin" title="Operations Control Console">
+              <Button variant="ghost" size="sm" leftIcon={<ShieldCheck size={16} color="var(--forest-800)" />}>
+                Admin Portal
+              </Button>
+            </Link>
+          )}
+
+          {user ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+              <Link to="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                <div
+                  style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    backgroundColor: 'var(--forest-100)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'var(--forest-800)',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                  }}
+                >
+                  <UserIcon size={16} />
+                </div>
+                <div className="desktop-nav" style={{ textAlign: 'left', lineHeight: 1.2 }}>
+                  <div style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--charcoal-900)' }}>
+                    {profile?.full_name || user.email?.split('@')[0]}
+                  </div>
+                  <Badge variant={isAdmin ? 'forest' : 'lime'} size="sm">
+                    {isAdmin ? 'Admin' : 'Golfer'}
+                  </Badge>
+                </div>
+              </Link>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSignOut}
+                leftIcon={<LogOut size={14} />}
+                title="Sign out of platform"
+              >
+                Sign Out
+              </Button>
+            </div>
+          ) : (
+            <>
+              <Link to="/login">
+                <Button variant="outline" size="sm">
+                  Sign In
+                </Button>
+              </Link>
+              <Link to="/subscribe">
+                <Button variant="primary" size="sm">
+                  Subscribe
+                </Button>
+              </Link>
+            </>
+          )}
+
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="mobile-menu-btn"
@@ -166,17 +221,47 @@ export const Navbar: React.FC = () => {
               {link.label}
             </Link>
           ))}
+
+          {isAdmin && (
+            <Link
+              to="/admin"
+              onClick={() => setMobileMenuOpen(false)}
+              style={{
+                fontSize: 'var(--text-base)',
+                fontWeight: 600,
+                color: 'var(--forest-800)',
+              }}
+            >
+              Admin Portal
+            </Link>
+          )}
+
           <div style={{ paddingTop: 'var(--space-4)', display: 'flex', gap: 'var(--space-3)' }}>
-            <Link to="/login" style={{ flex: 1 }} onClick={() => setMobileMenuOpen(false)}>
-              <Button variant="outline" className="w-full">
-                Sign In
+            {user ? (
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  handleSignOut();
+                }}
+              >
+                Sign Out
               </Button>
-            </Link>
-            <Link to="/subscribe" style={{ flex: 1 }} onClick={() => setMobileMenuOpen(false)}>
-              <Button variant="primary" className="w-full">
-                Subscribe
-              </Button>
-            </Link>
+            ) : (
+              <>
+                <Link to="/login" style={{ flex: 1 }} onClick={() => setMobileMenuOpen(false)}>
+                  <Button variant="outline" className="w-full">
+                    Sign In
+                  </Button>
+                </Link>
+                <Link to="/subscribe" style={{ flex: 1 }} onClick={() => setMobileMenuOpen(false)}>
+                  <Button variant="primary" className="w-full">
+                    Subscribe
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
         </div>
       )}

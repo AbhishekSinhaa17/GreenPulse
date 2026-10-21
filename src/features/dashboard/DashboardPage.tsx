@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { PageContainer } from '../../components/layout/PageContainer';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
@@ -7,74 +7,153 @@ import { Input } from '../../components/ui/Input';
 import { ScoreBall } from '../../components/ui/ScoreBall';
 import { Dialog } from '../../components/ui/Dialog';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../hooks/useAuth';
+import { scoreService } from '../../services/scoreService';
+import { charityService } from '../../services/charityService';
+import { drawService } from '../../services/drawService';
+import type { GolfScore, CharityPreference, WinnerClaim } from '../../types';
 import {
   Plus,
   Trash2,
   Upload,
-  CreditCard
+  CreditCard,
+  AlertCircle,
+  RefreshCw
 } from 'lucide-react';
-import type { GolfScore } from '../../types';
 
 export const DashboardPage: React.FC = () => {
   const { success, error, warning } = useToast();
+  const { user, profile, isConfigured } = useAuth();
 
-  // Mock User State matching PRD § 10
-  const [scores, setScores] = useState<GolfScore[]>([
-    { id: '1', user_id: 'u1', score: 38, played_at: '2026-10-18', course_name: 'St Andrews Links', verified: true, created_at: '' },
-    { id: '2', user_id: 'u1', score: 34, played_at: '2026-10-12', course_name: 'Carnoustie Golf Club', verified: true, created_at: '' },
-    { id: '3', user_id: 'u1', score: 41, played_at: '2026-10-04', course_name: 'Kingsbarns Golf Links', verified: false, created_at: '' },
-    { id: '4', user_id: 'u1', score: 36, played_at: '2026-09-27', course_name: 'Gleneagles PGA Centenary', verified: true, created_at: '' },
-    { id: '5', user_id: 'u1', score: 32, played_at: '2026-09-19', course_name: 'Muirfield', verified: true, created_at: '' },
-  ]);
+  // State
+  const [scores, setScores] = useState<GolfScore[]>([]);
+  const [charityPref, setCharityPref] = useState<CharityPreference | null>(null);
+  const [winnerClaims, setWinnerClaims] = useState<WinnerClaim[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Score Entry Modal
   const [isAddScoreOpen, setIsAddScoreOpen] = useState(false);
   const [newScoreVal, setNewScoreVal] = useState<number | ''>(36);
-  const [newScoreDate, setNewScoreDate] = useState<string>('2026-10-21');
-  const [newScoreCourse, setNewScoreCourse] = useState<string>('Royal Troon');
+  const [newScoreDate, setNewScoreDate] = useState<string>('');
+  const [newScoreCourse, setNewScoreCourse] = useState<string>('');
+  const [isSubmittingScore, setIsSubmittingScore] = useState(false);
 
-  // Proof Upload Modal (§ 09)
+  // Proof Upload Modal
   const [isUploadProofOpen, setIsUploadProofOpen] = useState(false);
+  const [selectedClaim, setSelectedClaim] = useState<WinnerClaim | null>(null);
+  const [proofFile, setProofFile] = useState<File | null>(null);
+  const [golferNotes, setGolferNotes] = useState('');
+  const [isUploadingProof, setIsUploadingProof] = useState(false);
 
-  // Handle Score Addition with 5-score rolling logic & duplicate date check (§ 05)
-  const handleAddScore = (e: React.FormEvent) => {
+  const loadDashboardData = useCallback(() => {
+    if (!isConfigured || !user) {
+      return;
+    }
+
+    queueMicrotask(() => {
+      setIsLoading(true);
+      setLoadError(null);
+    });
+
+    Promise.all([
+      scoreService.getScores(user.id),
+      charityService.getUserCharityPreference(user.id),
+      drawService.getUserWinnerClaims(user.id),
+    ])
+      .then(([fetchedScores, fetchedPref, fetchedClaims]) => {
+        setScores(fetchedScores);
+        setCharityPref(fetchedPref);
+        setWinnerClaims(fetchedClaims);
+      })
+      .catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : 'Failed to load dashboard data from Supabase.';
+        setLoadError(message);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  }, [user, isConfigured]);
+
+  useEffect(() => {
+    loadDashboardData();
+  }, [loadDashboardData]);
+
+  // Handle Score Submission with Real Database Enforcement
+  const handleAddScore = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!isConfigured) {
+      error(
+        'Database Required',
+        'Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env to record real rounds.'
+      );
+      return;
+    }
 
     if (newScoreVal === '' || newScoreVal < 1 || newScoreVal > 45) {
       error('Invalid Score', 'Stableford score must be between 1 and 45 points.');
       return;
     }
 
-    // Check duplicate date constraint (§ 05: "Only one score entry is permitted per date")
-    const dateExists = scores.some((s) => s.played_at === newScoreDate);
-    if (dateExists) {
-      warning('Duplicate Date Error', `A score for ${newScoreDate} already exists. Please edit or delete that entry.`);
+    if (!newScoreDate) {
+      error('Missing Date', 'Please select a date for the round.');
       return;
     }
 
-    const newEntry: GolfScore = {
-      id: Math.random().toString(36).substring(2, 9),
-      user_id: 'u1',
-      score: Number(newScoreVal),
-      played_at: newScoreDate,
-      course_name: newScoreCourse,
-      verified: false,
-      created_at: new Date().toISOString(),
-    };
-
-    // Automatically retain only latest 5 scores sorted descending by date
-    const updated = [newEntry, ...scores]
-      .sort((a, b) => new Date(b.played_at).getTime() - new Date(a.played_at).getTime())
-      .slice(0, 5);
-
-    setScores(updated);
-    setIsAddScoreOpen(false);
-    success('Score Recorded', `Added ${newScoreVal} pts. 5-score rolling queue updated automatically.`);
+    setIsSubmittingScore(true);
+    try {
+      const updated = await scoreService.submitScore(Number(newScoreVal), newScoreDate, newScoreCourse);
+      setScores(updated);
+      setIsAddScoreOpen(false);
+      setNewScoreVal(36);
+      setNewScoreDate('');
+      setNewScoreCourse('');
+      success('Score Recorded', `Added ${newScoreVal} pts. 5-score rolling queue updated automatically in database.`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to record score.';
+      error('Score Error', msg);
+    } finally {
+      setIsSubmittingScore(false);
+    }
   };
 
-  const handleDeleteScore = (id: string) => {
-    setScores((prev) => prev.filter((s) => s.id !== id));
-    warning('Score Removed', 'Score deleted from your active 5-round ticket.');
+  const handleDeleteScore = async (id: string) => {
+    if (!isConfigured) {
+      warning('Offline Mode', 'Cannot delete from database when Supabase is unconfigured.');
+      return;
+    }
+    try {
+      await scoreService.deleteScore(id);
+      setScores((prev) => prev.filter((s) => s.id !== id));
+      warning('Score Removed', 'Score deleted from your active 5-round ticket.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to delete score.';
+      error('Delete Error', msg);
+    }
+  };
+
+  const handleUploadProof = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedClaim || !proofFile || !user) {
+      error('Missing File', 'Please select a scorecard image file.');
+      return;
+    }
+
+    setIsUploadingProof(true);
+    try {
+      await drawService.submitWinnerProof(selectedClaim.id, user.id, proofFile, golferNotes);
+      success('Proof Submitted', 'Your scorecard proof has been uploaded for admin review.');
+      setIsUploadProofOpen(false);
+      setProofFile(null);
+      setGolferNotes('');
+      await loadDashboardData();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Proof upload failed.';
+      error('Upload Error', msg);
+    } finally {
+      setIsUploadingProof(false);
+    }
   };
 
   return (
@@ -90,26 +169,60 @@ export const DashboardPage: React.FC = () => {
       >
         <div>
           <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Golfer Portal · Member #GP-8421
+            Golfer Workspace · {user?.email || 'Guest Mode'}
           </span>
-          <h2 style={{ color: 'var(--forest-950)' }}>Welcome back, Marcus Reid</h2>
+          <h2 style={{ color: 'var(--forest-950)' }}>
+            Welcome back, {profile?.full_name || user?.email?.split('@')[0] || 'Golfer'}
+          </h2>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', flexWrap: 'wrap' }}>
           <div style={{ textAlign: 'right' }}>
             <div className="flex items-center gap-2">
               <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>Status:</span>
-              <Badge variant="success">Active Member</Badge>
+              <Badge variant={isConfigured ? 'success' : 'neutral'}>
+                {isConfigured ? 'Active Subscriber' : 'Offline / Setup Needed'}
+              </Badge>
             </div>
             <span style={{ fontSize: 'var(--text-xs)', color: 'var(--charcoal-600)', display: 'block', marginTop: '2px' }}>
-              Renews Nov 21, 2026 · Monthly Plan (£19/mo)
+              {isConfigured ? 'Renews Monthly · £19/mo' : 'Connect Supabase in .env'}
             </span>
           </div>
           <Button variant="outline" size="sm" leftIcon={<CreditCard size={14} />}>
             Manage Billing
           </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={loadDashboardData}
+            leftIcon={<RefreshCw size={14} />}
+            title="Refresh database records"
+          >
+            Refresh
+          </Button>
         </div>
       </div>
+
+      {loadError && (
+        <div
+          role="alert"
+          style={{
+            padding: 'var(--space-4)',
+            backgroundColor: 'var(--color-error-bg)',
+            border: '1px solid var(--color-error-border)',
+            borderRadius: 'var(--radius-md)',
+            marginBottom: 'var(--space-6)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 'var(--space-3)',
+            color: 'var(--color-error)',
+            fontSize: 'var(--text-sm)',
+          }}
+        >
+          <AlertCircle size={18} style={{ flexShrink: 0 }} />
+          <span>{loadError}</span>
+        </div>
+      )}
 
       {/* Grid: Selected Charity & Participation / Winnings Summary */}
       <div
@@ -127,12 +240,15 @@ export const DashboardPage: React.FC = () => {
               <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
                 Designated Cause (§ 08)
               </span>
-              <h4 style={{ marginTop: '2px' }}>Fairway Green Youth Foundation</h4>
+              <h4 style={{ marginTop: '2px' }}>
+                {charityPref?.charity?.name || 'No Charity Selected Yet'}
+              </h4>
             </div>
-            <Badge variant="lime">15% Pledged</Badge>
+            <Badge variant="lime">{charityPref ? `${charityPref.percentage}% Pledged` : '10% Minimum'}</Badge>
           </div>
           <p style={{ fontSize: 'var(--text-sm)', color: 'var(--charcoal-600)', marginBottom: 'var(--space-4)' }}>
-            Providing mentorship, club access, and junior coaching to young golfers in Glasgow.
+            {charityPref?.charity?.description ||
+              'Select a verified charity partner to receive a portion of your subscription fee with each draw cycle.'}
           </p>
           <div
             style={{
@@ -144,10 +260,10 @@ export const DashboardPage: React.FC = () => {
             }}
           >
             <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
-              Your Lifetime Contribution: <strong>£51.30</strong>
+              Lifetime Contribution: <strong>£0.00</strong>
             </span>
             <Button variant="ghost" size="sm" style={{ color: 'var(--forest-800)' }}>
-              Adjust Pledge
+              Browse Charities
             </Button>
           </div>
         </Card>
@@ -157,35 +273,52 @@ export const DashboardPage: React.FC = () => {
           <div className="flex justify-between items-start" style={{ marginBottom: 'var(--space-3)' }}>
             <div>
               <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                Winnings Overview
+                Winnings & Verification (§ 09)
               </span>
-              <h4 style={{ marginTop: '2px' }}>September Draw: Tier 3 Winner!</h4>
+              <h4 style={{ marginTop: '2px' }}>
+                {winnerClaims.length > 0 ? 'Pending Prize Claim' : 'No Active Prize Claims'}
+              </h4>
             </div>
-            <Badge variant="warning">Verification Pending</Badge>
+            {winnerClaims.length > 0 && (
+              <Badge variant={winnerClaims[0].status === 'verified' ? 'success' : 'warning'}>
+                {winnerClaims[0].status.replace('_', ' ')}
+              </Badge>
+            )}
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' }}>
-            <span style={{ fontFamily: 'var(--font-numeric)', fontSize: 'var(--text-3xl)', fontWeight: 700, color: 'var(--forest-800)' }}>
-              £190.00
-            </span>
-            <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
-              (3-Number Match · Payout Pending Proof)
-            </span>
-          </div>
-
-          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--charcoal-700)', marginBottom: 'var(--space-4)' }}>
-            PRD § 09 requires scorecard screenshot proof from your golf platform before payout release.
-          </p>
-
-          <Button
-            variant="primary"
-            size="sm"
-            className="w-full"
-            leftIcon={<Upload size={14} />}
-            onClick={() => setIsUploadProofOpen(true)}
-          >
-            Upload Scorecard Proof
-          </Button>
+          {winnerClaims.length > 0 ? (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' }}>
+                <span style={{ fontFamily: 'var(--font-numeric)', fontSize: 'var(--text-3xl)', fontWeight: 700, color: 'var(--forest-800)' }}>
+                  £{(winnerClaims[0].prize_amount_cents / 100).toFixed(2)}
+                </span>
+                <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+                  ({winnerClaims[0].match_tier.replace('_', ' ').toUpperCase()})
+                </span>
+              </div>
+              <p style={{ fontSize: 'var(--text-xs)', color: 'var(--charcoal-700)', marginBottom: 'var(--space-4)' }}>
+                Upload scorecard screenshot from your golf platform before payout release.
+              </p>
+              {winnerClaims[0].status === 'pending_proof' && (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  className="w-full"
+                  leftIcon={<Upload size={14} />}
+                  onClick={() => {
+                    setSelectedClaim(winnerClaims[0]);
+                    setIsUploadProofOpen(true);
+                  }}
+                >
+                  Upload Scorecard Proof
+                </Button>
+              )}
+            </div>
+          ) : (
+            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--charcoal-600)', marginTop: 'var(--space-2)' }}>
+              Scores matching 3, 4, or 5 numbers in the monthly draw will generate prize claims here.
+            </p>
+          )}
         </Card>
 
         {/* Module C: Participation Summary (§ 10) */}
@@ -194,11 +327,17 @@ export const DashboardPage: React.FC = () => {
             Draw Participation
           </span>
           <h4 style={{ marginTop: '2px', marginBottom: 'var(--space-4)' }}>Active Ticket Snapshot</h4>
-          <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-4)' }}>
-            {scores.map((s, i) => (
-              <ScoreBall key={s.id} number={s.score} label={`#${i + 1}`} size="sm" />
-            ))}
-          </div>
+          {scores.length > 0 ? (
+            <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-4)', flexWrap: 'wrap' }}>
+              {scores.map((s, i) => (
+                <ScoreBall key={s.id} number={s.score} label={`#${i + 1}`} size="sm" />
+              ))}
+            </div>
+          ) : (
+            <div style={{ padding: 'var(--space-4) 0', color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>
+              No scores recorded yet. Add 5 rounds below to activate your monthly draw ticket.
+            </div>
+          )}
           <div
             style={{
               paddingTop: 'var(--space-3)',
@@ -209,8 +348,8 @@ export const DashboardPage: React.FC = () => {
               color: 'var(--charcoal-600)',
             }}
           >
-            <span>Total Draws Entered: <strong>4</strong></span>
-            <span>Upcoming: <strong>Oct 31, 2026</strong></span>
+            <span>Active Rounds: <strong>{scores.length}/5</strong></span>
+            <span>Ticket Status: <strong>{scores.length === 5 ? 'Active' : 'Needs 5 Rounds'}</strong></span>
           </div>
         </Card>
       </div>
@@ -234,67 +373,82 @@ export const DashboardPage: React.FC = () => {
         </div>
 
         <Card padding="none" style={{ overflow: 'hidden' }}>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 'var(--text-sm)' }}>
-              <thead>
-                <tr style={{ backgroundColor: 'var(--bg-surface-warm)', borderBottom: '1px solid var(--border-default)' }}>
-                  <th style={{ padding: 'var(--space-4)', fontWeight: 600, color: 'var(--forest-900)' }}>Stableford Score</th>
-                  <th style={{ padding: 'var(--space-4)', fontWeight: 600, color: 'var(--forest-900)' }}>Date Played</th>
-                  <th style={{ padding: 'var(--space-4)', fontWeight: 600, color: 'var(--forest-900)' }}>Course / Club</th>
-                  <th style={{ padding: 'var(--space-4)', fontWeight: 600, color: 'var(--forest-900)' }}>Status</th>
-                  <th style={{ padding: 'var(--space-4)', textAlign: 'right', fontWeight: 600, color: 'var(--forest-900)' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {scores.map((s, index) => (
-                  <tr
-                    key={s.id}
-                    style={{
-                      borderBottom: index < scores.length - 1 ? '1px solid var(--border-subtle)' : 'none',
-                      backgroundColor: index % 2 === 0 ? 'var(--bg-surface)' : 'rgba(251, 249, 244, 0.4)',
-                    }}
-                  >
-                    <td style={{ padding: 'var(--space-4)' }}>
-                      <div className="flex items-center gap-3">
-                        <ScoreBall number={s.score} size="sm" />
-                        <span style={{ fontWeight: 600, color: 'var(--forest-950)' }}>
-                          {s.score} pts
-                        </span>
-                      </div>
-                    </td>
-                    <td style={{ padding: 'var(--space-4)', color: 'var(--charcoal-700)' }}>
-                      {s.played_at}
-                    </td>
-                    <td style={{ padding: 'var(--space-4)', color: 'var(--charcoal-800)', fontWeight: 500 }}>
-                      {s.course_name || 'Home Course'}
-                    </td>
-                    <td style={{ padding: 'var(--space-4)' }}>
-                      {s.verified ? (
-                        <Badge variant="success" size="sm">Verified</Badge>
-                      ) : (
-                        <Badge variant="neutral" size="sm">Self-Reported</Badge>
-                      )}
-                    </td>
-                    <td style={{ padding: 'var(--space-4)', textAlign: 'right' }}>
-                      <button
-                        onClick={() => handleDeleteScore(s.id)}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: 'var(--color-error)',
-                          cursor: 'pointer',
-                          padding: 'var(--space-1)',
-                        }}
-                        title="Delete round"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </td>
+          {isLoading ? (
+            <div style={{ padding: 'var(--space-8)', textAlign: 'center', color: 'var(--text-muted)' }}>
+              Loading scores from database...
+            </div>
+          ) : scores.length === 0 ? (
+            <div style={{ padding: 'var(--space-12)', textAlign: 'center' }}>
+              <p style={{ color: 'var(--charcoal-500)', marginBottom: 'var(--space-4)' }}>
+                No Stableford rounds logged yet.
+              </p>
+              <Button variant="outline" size="sm" onClick={() => setIsAddScoreOpen(true)}>
+                Record Your First Round
+              </Button>
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 'var(--text-sm)' }}>
+                <thead>
+                  <tr style={{ backgroundColor: 'var(--bg-surface-warm)', borderBottom: '1px solid var(--border-default)' }}>
+                    <th style={{ padding: 'var(--space-4)', fontWeight: 600, color: 'var(--forest-900)' }}>Stableford Score</th>
+                    <th style={{ padding: 'var(--space-4)', fontWeight: 600, color: 'var(--forest-900)' }}>Date Played</th>
+                    <th style={{ padding: 'var(--space-4)', fontWeight: 600, color: 'var(--forest-900)' }}>Course / Club</th>
+                    <th style={{ padding: 'var(--space-4)', fontWeight: 600, color: 'var(--forest-900)' }}>Verification</th>
+                    <th style={{ padding: 'var(--space-4)', textAlign: 'right', fontWeight: 600, color: 'var(--forest-900)' }}>Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {scores.map((s, index) => (
+                    <tr
+                      key={s.id}
+                      style={{
+                        borderBottom: index < scores.length - 1 ? '1px solid var(--border-subtle)' : 'none',
+                        backgroundColor: index % 2 === 0 ? 'var(--bg-surface)' : 'rgba(251, 249, 244, 0.4)',
+                      }}
+                    >
+                      <td style={{ padding: 'var(--space-4)' }}>
+                        <div className="flex items-center gap-3">
+                          <ScoreBall number={s.score} size="sm" />
+                          <span style={{ fontWeight: 600, color: 'var(--forest-950)' }}>
+                            {s.score} pts
+                          </span>
+                        </div>
+                      </td>
+                      <td style={{ padding: 'var(--space-4)', color: 'var(--charcoal-700)' }}>
+                        {s.played_at}
+                      </td>
+                      <td style={{ padding: 'var(--space-4)', color: 'var(--charcoal-800)', fontWeight: 500 }}>
+                        {s.course_name || 'Home Course'}
+                      </td>
+                      <td style={{ padding: 'var(--space-4)' }}>
+                        {s.verified ? (
+                          <Badge variant="success" size="sm">Verified</Badge>
+                        ) : (
+                          <Badge variant="neutral" size="sm">Self-Reported</Badge>
+                        )}
+                      </td>
+                      <td style={{ padding: 'var(--space-4)', textAlign: 'right' }}>
+                        <button
+                          onClick={() => handleDeleteScore(s.id)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--color-error)',
+                            cursor: 'pointer',
+                            padding: 'var(--space-1)',
+                          }}
+                          title="Delete round"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </Card>
       </div>
 
@@ -309,7 +463,7 @@ export const DashboardPage: React.FC = () => {
             <Button variant="ghost" onClick={() => setIsAddScoreOpen(false)}>
               Cancel
             </Button>
-            <Button variant="primary" onClick={handleAddScore}>
+            <Button variant="primary" isLoading={isSubmittingScore} onClick={handleAddScore}>
               Save to Active Scores
             </Button>
           </>
@@ -332,7 +486,7 @@ export const DashboardPage: React.FC = () => {
             type="date"
             value={newScoreDate}
             onChange={(e) => setNewScoreDate(e.target.value)}
-            hint="Only one entry per date permitted (§ 05)."
+            hint="Only one entry per date permitted (§ 05). Duplicate dates are rejected."
             required
           />
 
@@ -341,7 +495,7 @@ export const DashboardPage: React.FC = () => {
             type="text"
             value={newScoreCourse}
             onChange={(e) => setNewScoreCourse(e.target.value)}
-            placeholder="e.g. Royal Troon Old Course"
+            placeholder="e.g. St Andrews Old Course"
           />
         </form>
       </Dialog>
@@ -359,39 +513,37 @@ export const DashboardPage: React.FC = () => {
             </Button>
             <Button
               variant="primary"
-              onClick={() => {
-                setIsUploadProofOpen(false);
-                success('Proof Submitted', 'Your scorecard proof is under admin review. Payment released upon approval.');
-              }}
+              isLoading={isUploadingProof}
+              onClick={handleUploadProof}
             >
               Submit for Verification
             </Button>
           </>
         }
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-          <div
-            style={{
-              border: '2px dashed var(--border-default)',
-              borderRadius: 'var(--radius-lg)',
-              padding: 'var(--space-8)',
-              textAlign: 'center',
-              backgroundColor: 'var(--bg-surface-warm)',
-              cursor: 'pointer',
+        <form onSubmit={handleUploadProof} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+          <Input
+            label="Scorecard Screenshot File"
+            type="file"
+            accept="image/png,image/jpeg,image/webp,application/pdf"
+            onChange={(e) => {
+              if (e.target.files?.[0]) setProofFile(e.target.files[0]);
             }}
-          >
-            <Upload size={32} color="var(--forest-700)" style={{ margin: '0 auto var(--space-2)' }} />
-            <div style={{ fontWeight: 600, fontSize: 'var(--text-sm)' }}>
-              Click or drag scorecard screenshot here
-            </div>
-            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: '4px' }}>
-              PNG, JPG, or PDF up to 5MB
-            </div>
-          </div>
+            required
+          />
+
+          <Input
+            label="Golfer Notes (Optional)"
+            type="text"
+            value={golferNotes}
+            onChange={(e) => setGolferNotes(e.target.value)}
+            placeholder="e.g. Round played at club championship"
+          />
+
           <p style={{ fontSize: 'var(--text-xs)', color: 'var(--charcoal-600)' }}>
-            Note: Admin verifies the date and Stableford points match your registered profile rounds.
+            Uploaded to private Supabase storage. Admin reviews round date and score authenticity before payout release (§ 09).
           </p>
-        </div>
+        </form>
       </Dialog>
     </PageContainer>
   );

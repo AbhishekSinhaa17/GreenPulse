@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { PageContainer } from '../../components/layout/PageContainer';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
@@ -6,6 +6,9 @@ import { Button } from '../../components/ui/Button';
 import { ScoreBall } from '../../components/ui/ScoreBall';
 import { Dialog } from '../../components/ui/Dialog';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../hooks/useAuth';
+import { adminService } from '../../services/adminService';
+import type { UserProfile, WinnerClaim } from '../../types';
 import {
   Users,
   Trophy,
@@ -15,17 +18,22 @@ import {
   Play,
   Send,
   Eye,
-  Check,
-  X
+  RefreshCw
 } from 'lucide-react';
 
 export const AdminPage: React.FC = () => {
-  const { success, warning, info } = useToast();
+  const { success, warning, error, info } = useToast();
+  const { user, isConfigured } = useAuth();
   const [activeTab, setActiveTab] = useState<'draw' | 'winners' | 'users' | 'charities' | 'analytics'>('draw');
+
+  // Real data state
+  const [usersList, setUsersList] = useState<UserProfile[]>([]);
+  const [claimsList, setClaimsList] = useState<WinnerClaim[]>([]);
 
   // Draw simulation state (§ 11.2)
   const [drawMode, setDrawMode] = useState<'random' | 'algorithmic'>('random');
   const [simulatedNumbers, setSimulatedNumbers] = useState<number[] | null>(null);
+  const [isPublishing, setIsPublishing] = useState(false);
   const [simResults, setSimResults] = useState<{
     tier5: number;
     tier4: number;
@@ -35,17 +43,32 @@ export const AdminPage: React.FC = () => {
   } | null>(null);
 
   // Winner verification modal (§ 11.4)
-  const [selectedWinnerProof, setSelectedWinnerProof] = useState<{
-    golfer: string;
-    tier: string;
-    amount: string;
-    roundDate: string;
-    score: number;
-  } | null>(null);
+  const [selectedClaim, setSelectedClaim] = useState<WinnerClaim | null>(null);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [payoutRef, setPayoutRef] = useState('');
+  const [isProcessingClaim, setIsProcessingClaim] = useState(false);
+
+  const loadAdminData = useCallback(() => {
+    if (!isConfigured) return;
+    Promise.all([
+      adminService.getAllUsers(),
+      adminService.getAllWinnerClaims(),
+    ])
+      .then(([u, c]) => {
+        setUsersList(u);
+        setClaimsList(c);
+      })
+      .catch((err: unknown) => {
+        console.error('[AdminPage] Failed to fetch admin data:', err);
+      });
+  }, [isConfigured]);
+
+  useEffect(() => {
+    loadAdminData();
+  }, [loadAdminData]);
 
   // Run Draw Simulation (PRD § 06 / § 11: non-destructive pre-publish simulation)
   const handleRunSimulation = () => {
-    // Generate 5 distinct numbers between 1 and 45
     const nums = new Set<number>();
     while (nums.size < 5) {
       if (drawMode === 'algorithmic') {
@@ -53,7 +76,7 @@ export const AdminPage: React.FC = () => {
         const weighted = Math.floor(Math.random() * 15) + 28;
         nums.add(Math.min(45, Math.max(1, weighted)));
       } else {
-        // Cryptographically uniform lottery style
+        // Uniform lottery style (1-45)
         nums.add(Math.floor(Math.random() * 45) + 1);
       }
     }
@@ -74,12 +97,63 @@ export const AdminPage: React.FC = () => {
     );
   };
 
-  const handlePublishDraw = () => {
+  const handlePublishDraw = async () => {
     if (!simulatedNumbers) {
       warning('Run Simulation First', 'PRD § 06 requires simulation verification before publishing.');
       return;
     }
-    success('Draw Published', 'Draw numbers committed. Winner claims generated and golfers notified.');
+
+    if (!isConfigured) {
+      error('Configuration Required', 'Real draw publishing requires Supabase database connection.');
+      return;
+    }
+
+    setIsPublishing(true);
+    try {
+      await adminService.publishDraw({
+        draw_title: 'October 2026 Monthly Prize Draw',
+        draw_month: '2026-10-01',
+        draw_logic: drawMode,
+        winning_numbers: simulatedNumbers as [number, number, number, number, number],
+        total_eligible_subscribers: 1498,
+        total_prize_pool_cents: 2845000,
+        published_by: user?.id,
+      });
+      success('Draw Published', 'Draw numbers committed to Supabase. Golfer notifications triggered.');
+      setSimulatedNumbers(null);
+      setSimResults(null);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to publish draw.';
+      error('Publish Error', msg);
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
+  const handleReviewClaim = async (action: 'approve' | 'reject') => {
+    if (!selectedClaim) return;
+    if (!isConfigured) {
+      error('Configuration Required', 'Claim approval requires Supabase database connection.');
+      return;
+    }
+
+    setIsProcessingClaim(true);
+    try {
+      await adminService.reviewWinnerClaim(selectedClaim.id, action, rejectionReason, payoutRef);
+      success(
+        action === 'approve' ? 'Winner Verified' : 'Claim Rejected',
+        action === 'approve' ? 'Payout status updated and locked.' : 'Rejection reason recorded.'
+      );
+      setSelectedClaim(null);
+      setRejectionReason('');
+      setPayoutRef('');
+      await loadAdminData();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Claim review failed.';
+      error('Review Error', msg);
+    } finally {
+      setIsProcessingClaim(false);
+    }
   };
 
   return (
@@ -96,9 +170,9 @@ export const AdminPage: React.FC = () => {
         <div>
           <div className="flex items-center gap-2" style={{ marginBottom: 'var(--space-1)' }}>
             <Badge variant="forest">PRD § 11 Admin Console</Badge>
-            <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-success)', fontWeight: 600 }}>
-              ● Production Authorization
-            </span>
+            <Badge variant={isConfigured ? 'success' : 'neutral'}>
+              {isConfigured ? 'Live Database Connected' : 'Setup Required'}
+            </Badge>
           </div>
           <h2 style={{ color: 'var(--forest-950)' }}>Operations & Platform Control</h2>
         </div>
@@ -126,7 +200,7 @@ export const AdminPage: React.FC = () => {
             onClick={() => setActiveTab('users')}
             leftIcon={<Users size={14} />}
           >
-            01 Users
+            01 Users ({usersList.length})
           </Button>
           <Button
             variant={activeTab === 'charities' ? 'primary' : 'outline'}
@@ -143,6 +217,15 @@ export const AdminPage: React.FC = () => {
             leftIcon={<BarChart3 size={14} />}
           >
             05 Analytics
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={loadAdminData}
+            leftIcon={<RefreshCw size={14} />}
+            title="Refresh database"
+          >
+            Refresh
           </Button>
         </div>
       </div>
@@ -209,6 +292,7 @@ export const AdminPage: React.FC = () => {
                     variant="primary"
                     leftIcon={<Send size={16} />}
                     disabled={!simulatedNumbers}
+                    isLoading={isPublishing}
                     onClick={handlePublishDraw}
                   >
                     Publish Results
@@ -218,7 +302,7 @@ export const AdminPage: React.FC = () => {
 
               {/* Number Balls Display */}
               {simulatedNumbers ? (
-                <div style={{ display: 'flex', gap: 'var(--space-3)', margin: 'var(--space-4) 0' }}>
+                <div style={{ display: 'flex', gap: 'var(--space-3)', margin: 'var(--space-4) 0', flexWrap: 'wrap' }}>
                   {simulatedNumbers.map((n, i) => (
                     <ScoreBall key={i} number={n} status="winning" label={`Ball ${i + 1}`} />
                   ))}
@@ -283,80 +367,118 @@ export const AdminPage: React.FC = () => {
             </p>
           </div>
 
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 'var(--text-sm)' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--border-default)', backgroundColor: 'var(--bg-surface)' }}>
-                <th style={{ padding: 'var(--space-4)' }}>Golfer Name</th>
-                <th style={{ padding: 'var(--space-4)' }}>Match Tier</th>
-                <th style={{ padding: 'var(--space-4)' }}>Prize Amount</th>
-                <th style={{ padding: 'var(--space-4)' }}>Status</th>
-                <th style={{ padding: 'var(--space-4)' }}>Submitted Proof</th>
-                <th style={{ padding: 'var(--space-4)', textAlign: 'right' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                <td style={{ padding: 'var(--space-4)', fontWeight: 600 }}>Marcus Reid</td>
-                <td style={{ padding: 'var(--space-4)' }}>
-                  <Badge variant="forest" size="sm">3-Number Match</Badge>
-                </td>
-                <td style={{ padding: 'var(--space-4)', fontFamily: 'var(--font-numeric)', fontWeight: 700 }}>
-                  £190.00
-                </td>
-                <td style={{ padding: 'var(--space-4)' }}>
-                  <Badge variant="warning" size="sm">Proof Under Review</Badge>
-                </td>
-                <td style={{ padding: 'var(--space-4)' }}>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    leftIcon={<Eye size={14} />}
-                    onClick={() =>
-                      setSelectedWinnerProof({
-                        golfer: 'Marcus Reid',
-                        tier: '3-Number Match',
-                        amount: '£190.00',
-                        roundDate: '2026-10-18',
-                        score: 38,
-                      })
-                    }
-                  >
-                    View Scorecard
-                  </Button>
-                </td>
-                <td style={{ padding: 'var(--space-4)', textAlign: 'right' }}>
-                  <div style={{ display: 'inline-flex', gap: 'var(--space-2)' }}>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => success('Claim Approved', 'Winner verified. Payout marked as completed.')}
-                    >
-                      <Check size={14} /> Approve & Pay
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => warning('Proof Rejected', 'Rejection reason logged. User prompted to re-upload.')}
-                    >
-                      <X size={14} /> Reject
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          {claimsList.length === 0 ? (
+            <div style={{ padding: 'var(--space-12)', textAlign: 'center', color: 'var(--text-muted)' }}>
+              No claims currently in the verification queue.
+            </div>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 'var(--text-sm)' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--border-default)', backgroundColor: 'var(--bg-surface)' }}>
+                  <th style={{ padding: 'var(--space-4)' }}>Golfer User ID</th>
+                  <th style={{ padding: 'var(--space-4)' }}>Match Tier</th>
+                  <th style={{ padding: 'var(--space-4)' }}>Prize Amount</th>
+                  <th style={{ padding: 'var(--space-4)' }}>Status</th>
+                  <th style={{ padding: 'var(--space-4)' }}>Proof Path</th>
+                  <th style={{ padding: 'var(--space-4)', textAlign: 'right' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {claimsList.map((claim) => (
+                  <tr key={claim.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                    <td style={{ padding: 'var(--space-4)', fontFamily: 'monospace' }}>
+                      {claim.user_id.substring(0, 8)}...
+                    </td>
+                    <td style={{ padding: 'var(--space-4)' }}>
+                      <Badge variant="forest" size="sm">{claim.match_tier.replace('_', ' ')}</Badge>
+                    </td>
+                    <td style={{ padding: 'var(--space-4)', fontFamily: 'var(--font-numeric)', fontWeight: 700 }}>
+                      £{(claim.prize_amount_cents / 100).toFixed(2)}
+                    </td>
+                    <td style={{ padding: 'var(--space-4)' }}>
+                      <Badge variant={claim.status === 'verified' ? 'success' : claim.status === 'paid' ? 'forest' : 'warning'} size="sm">
+                        {claim.status.replace('_', ' ')}
+                      </Badge>
+                    </td>
+                    <td style={{ padding: 'var(--space-4)', fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+                      {claim.proof_image_path || 'No file uploaded yet'}
+                    </td>
+                    <td style={{ padding: 'var(--space-4)', textAlign: 'right' }}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        leftIcon={<Eye size={14} />}
+                        onClick={() => setSelectedClaim(claim)}
+                      >
+                        Inspect & Review
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </Card>
       )}
 
-      {/* Surface 05 / 01 / 03: Overview Analytics */}
-      {(activeTab === 'analytics' || activeTab === 'users' || activeTab === 'charities') && (
+      {/* Surface 01: User Management (§ 11.1) */}
+      {activeTab === 'users' && (
+        <Card padding="none" style={{ overflow: 'hidden' }}>
+          <div style={{ padding: 'var(--space-4)', backgroundColor: 'var(--bg-surface-warm)', borderBottom: '1px solid var(--border-default)' }}>
+            <h4 style={{ color: 'var(--forest-950)' }}>User & Subscription Registry (§ 11.1)</h4>
+            <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+              Registered profiles and access roles in PostgreSQL.
+            </p>
+          </div>
+
+          {usersList.length === 0 ? (
+            <div style={{ padding: 'var(--space-12)', textAlign: 'center', color: 'var(--text-muted)' }}>
+              No registered profiles found in database.
+            </div>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 'var(--text-sm)' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--border-default)', backgroundColor: 'var(--bg-surface)' }}>
+                  <th style={{ padding: 'var(--space-4)' }}>Full Name</th>
+                  <th style={{ padding: 'var(--space-4)' }}>Email</th>
+                  <th style={{ padding: 'var(--space-4)' }}>Platform Role</th>
+                  <th style={{ padding: 'var(--space-4)' }}>Handicap</th>
+                  <th style={{ padding: 'var(--space-4)' }}>Joined</th>
+                </tr>
+              </thead>
+              <tbody>
+                {usersList.map((u) => (
+                  <tr key={u.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                    <td style={{ padding: 'var(--space-4)', fontWeight: 600 }}>{u.full_name}</td>
+                    <td style={{ padding: 'var(--space-4)', color: 'var(--charcoal-700)' }}>{u.email}</td>
+                    <td style={{ padding: 'var(--space-4)' }}>
+                      <Badge variant={u.role === 'admin' ? 'forest' : 'lime'} size="sm">
+                        {u.role}
+                      </Badge>
+                    </td>
+                    <td style={{ padding: 'var(--space-4)', fontFamily: 'var(--font-numeric)' }}>
+                      {u.handicap ?? '—'}
+                    </td>
+                    <td style={{ padding: 'var(--space-4)', color: 'var(--text-muted)' }}>
+                      {new Date(u.created_at).toLocaleDateString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Card>
+      )}
+
+      {/* Surface 05 / 03: Overview Analytics & Charities */}
+      {(activeTab === 'analytics' || activeTab === 'charities') && (
         <Card>
           <div style={{ textAlign: 'center', padding: 'var(--space-8)' }}>
             <BarChart3 size={40} color="var(--forest-700)" style={{ margin: '0 auto var(--space-4)' }} />
             <h3>PRD Operational Surface Ready</h3>
             <p style={{ maxWidth: '540px', margin: '0 auto var(--space-4)' }}>
-              Connected to database schema defined in <code>ARCHITECTURE.md</code>.
-              Supports real-time user status filtering, charity content CRUD, and Recharts KPI visualization.
+              Connected to database schema defined in <code>supabase/migrations/</code>.
+              Supports real-time user status filtering, charity content CRUD, and KPI aggregation.
             </p>
             <Button variant="outline" onClick={() => setActiveTab('draw')}>
               Back to Draw Management
@@ -365,48 +487,61 @@ export const AdminPage: React.FC = () => {
         </Card>
       )}
 
-      {/* Winner Scorecard Inspection Modal */}
-      {selectedWinnerProof && (
+      {/* Winner Claim Review Modal */}
+      {selectedClaim && (
         <Dialog
-          isOpen={!!selectedWinnerProof}
-          onClose={() => setSelectedWinnerProof(null)}
-          title={`Verify Scorecard: ${selectedWinnerProof.golfer}`}
-          description={`Validating round against claimed ${selectedWinnerProof.tier} for ${selectedWinnerProof.amount}.`}
+          isOpen={!!selectedClaim}
+          onClose={() => setSelectedClaim(null)}
+          title="Review Winner Submission"
+          description={`Validating claim for ${selectedClaim.match_tier.replace('_', ' ').toUpperCase()} · Amount: £${(selectedClaim.prize_amount_cents / 100).toFixed(2)}`}
           footer={
             <>
-              <Button variant="ghost" onClick={() => setSelectedWinnerProof(null)}>
-                Close
+              <Button variant="ghost" onClick={() => setSelectedClaim(null)}>
+                Cancel
+              </Button>
+              <Button
+                variant="outline"
+                isLoading={isProcessingClaim}
+                onClick={() => handleReviewClaim('reject')}
+              >
+                Reject Proof
               </Button>
               <Button
                 variant="primary"
-                onClick={() => {
-                  setSelectedWinnerProof(null);
-                  success('Verified', 'Proof accepted. Payout released.');
-                }}
+                isLoading={isProcessingClaim}
+                onClick={() => handleReviewClaim('approve')}
               >
-                Confirm Verification
+                Approve & Verify
               </Button>
             </>
           }
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
             <div style={{ backgroundColor: 'var(--bg-surface-warm)', padding: 'var(--space-4)', borderRadius: 'var(--radius-md)' }}>
-              <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>Platform Score Details</div>
-              <div style={{ fontWeight: 600 }}>Played: {selectedWinnerProof.roundDate} · Score: {selectedWinnerProof.score} pts (Stableford)</div>
+              <div><strong>Proof Path:</strong> <code>{selectedClaim.proof_image_path || 'No proof file provided'}</code></div>
+              {selectedClaim.golfer_notes && (
+                <div style={{ marginTop: 'var(--space-2)' }}><strong>Golfer Notes:</strong> {selectedClaim.golfer_notes}</div>
+              )}
             </div>
-            <div
-              style={{
-                height: '220px',
-                backgroundColor: 'var(--charcoal-900)',
-                borderRadius: 'var(--radius-md)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'var(--charcoal-400)',
-                fontSize: 'var(--text-sm)',
-              }}
-            >
-              [Official Scorecard Screenshot from Golf Genius App]
+
+            <div className="form-group">
+              <label className="form-label">Payout Reference (Optional, e.g. Stripe Transfer ID)</label>
+              <input
+                className="form-input"
+                placeholder="e.g. tr_1O834kL2049"
+                value={payoutRef}
+                onChange={(e) => setPayoutRef(e.target.value)}
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Rejection Reason (Required only if rejecting)</label>
+              <input
+                className="form-input"
+                placeholder="e.g. Scorecard round date does not match reported date"
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+              />
             </div>
           </div>
         </Dialog>

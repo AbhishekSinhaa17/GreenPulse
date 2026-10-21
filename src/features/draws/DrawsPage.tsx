@@ -1,17 +1,37 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { PageContainer } from '../../components/layout/PageContainer';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { ScoreBall } from '../../components/ui/ScoreBall';
 import { Clock } from 'lucide-react';
+import { drawService } from '../../services/drawService';
+import { useAuth } from '../../hooks/useAuth';
+import type { MonthlyDraw } from '../../types';
 
 export const DrawsPage: React.FC = () => {
+  const { isConfigured } = useAuth();
+  const [publishedDraws, setPublishedDraws] = useState<MonthlyDraw[]>([]);
+
+  useEffect(() => {
+    if (isConfigured) {
+      drawService.getPublishedDraws().then((draws) => {
+        setPublishedDraws(draws);
+      });
+    }
+  }, [isConfigured]);
+
+  // If DB returned published draws, use the most recent; otherwise display default PRD cycle
+  const latestDraw = publishedDraws.length > 0 ? publishedDraws[0] : null;
+
   return (
     <PageContainer>
-      <div style={{ maxWidth: '800px', margin: '0 auto var(--space-10)', textAlign: 'center' }}>
-        <Badge variant="forest" style={{ marginBottom: 'var(--space-2)' }}>
-          Monthly Draw & Reward Engine (§ 06, § 07)
-        </Badge>
+      <div style={{ maxWidth: '800px', margin: '0 auto var(--space-8)', textAlign: 'center' }}>
+        <div className="flex justify-center items-center gap-2" style={{ marginBottom: 'var(--space-2)' }}>
+          <Badge variant="forest">Monthly Draw & Reward Engine (§ 06, § 07)</Badge>
+          <Badge variant={isConfigured && latestDraw ? 'success' : 'neutral'}>
+            {isConfigured && latestDraw ? 'Live Supabase Cycle' : 'Scheduled Cycle'}
+          </Badge>
+        </div>
         <h2>The Monthly Draw. High Stakes, Lasting Purpose.</h2>
         <p>
           Each month, 5 winning numbers between 1 and 45 are drawn. Your active 5 Stableford scores
@@ -104,7 +124,9 @@ export const DrawsPage: React.FC = () => {
 
       {/* Past Published Draw Showcase */}
       <div style={{ maxWidth: '960px', margin: '0 auto' }}>
-        <h4 style={{ marginBottom: 'var(--space-4)' }}>Last Published Result: September 2026</h4>
+        <h4 style={{ marginBottom: 'var(--space-4)' }}>
+          {latestDraw ? latestDraw.draw_title : 'Last Published Result: September 2026'}
+        </h4>
         <Card>
           <div className="flex flex-col md-flex-row justify-between items-center gap-6">
             <div>
@@ -112,29 +134,29 @@ export const DrawsPage: React.FC = () => {
                 Winning Draw Numbers
               </span>
               <div style={{ display: 'flex', gap: 'var(--space-3)', marginTop: 'var(--space-2)' }}>
-                {[14, 27, 33, 38, 42].map((num) => (
+                {(latestDraw?.winning_numbers || [14, 27, 33, 38, 42]).map((num) => (
                   <ScoreBall key={num} number={num} status="winning" />
                 ))}
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: 'var(--space-8)' }}>
+            <div style={{ display: 'flex', gap: 'var(--space-8)', flexWrap: 'wrap' }}>
               <div>
                 <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>5-Match Winners</span>
                 <div style={{ fontWeight: 700, fontSize: 'var(--text-lg)', color: 'var(--color-warning)' }}>
-                  0 (Rolled Over)
+                  {latestDraw ? `${latestDraw.tier_5_winners_count} (Rolled Over)` : '0 (Rolled Over)'}
                 </div>
               </div>
               <div>
                 <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>4-Match Winners</span>
                 <div style={{ fontWeight: 700, fontSize: 'var(--text-lg)' }}>
-                  3 (£2,840 each)
+                  {latestDraw ? `${latestDraw.tier_4_winners_count} winners` : '3 (£2,840 each)'}
                 </div>
               </div>
               <div>
                 <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>3-Match Winners</span>
                 <div style={{ fontWeight: 700, fontSize: 'var(--text-lg)' }}>
-                  28 (£190 each)
+                  {latestDraw ? `${latestDraw.tier_3_winners_count} winners` : '28 (£190 each)'}
                 </div>
               </div>
             </div>

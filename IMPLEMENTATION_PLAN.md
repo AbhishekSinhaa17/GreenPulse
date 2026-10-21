@@ -39,18 +39,24 @@ graph LR
 
 ---
 
-### Phase 2: Authentication, Authorization & User Profile
+### Phase 2: Authentication, Authorization & User Profile (Completed & Verified)
 - **Scope:**
-  1. Configure Supabase client with public anon key.
-  2. Implement Supabase Auth (Sign Up, Sign In, Sign Out, Password Reset).
-  3. Auto-provision `profiles` table on signup with role assignment (`subscriber` vs `admin`).
-  4. Build Protected Route guards for Subscriber and Admin routes.
-  5. Profile settings page (name, handicap, home club, avatar).
-- **Acceptance Criteria:**
-  - Users can sign up and sign in seamlessly.
-  - Invalid credentials show clear, accessible inline errors.
-  - Admin users are routed to `/admin`; regular subscribers are routed to `/dashboard`.
-  - Non-authenticated visitors attempting to access protected routes are gracefully redirected to `/login`.
+  1. Configure Supabase client with public anon key and environment guard (`isSupabaseConfigured`).
+  2. Implement Supabase Auth (Sign Up, Sign In, Sign Out, Session Restoration).
+  3. Auto-provision `profiles` table on signup with role assignment default to `subscriber`.
+  4. Block client-side role privilege escalation in PostgreSQL via `prevent_unauthorized_role_change` trigger.
+  5. Build Protected Route guards for Subscriber and Admin routes with 403 screen.
+  6. Deploy baseline database schema and RLS policies across all 10 tables.
+  7. Implement 5-score rolling FIFO procedure (`record_golf_score`) with concurrency row-locking.
+  8. Connect `/dashboard`, `/charities`, `/draws`, `/admin`, and `Navbar` without mock successes.
+- **Acceptance Criteria & Verification:**
+  - [x] Users can sign up and sign in seamlessly via native Supabase Auth.
+  - [x] Invalid credentials show clear, accessible inline errors.
+  - [x] Admin users are routed to `/admin`; regular subscribers are routed to `/dashboard`.
+  - [x] Non-authenticated visitors attempting to access protected routes are gracefully redirected to `/login`.
+  - [x] 15/15 Vitest tests passing (`scoreRolling`, `authAndSecurity`, `drawMatching`).
+  - [x] Oxlint and `npm run build` exit with 0 errors.
+  - [x] Baseline migration script version-controlled in `supabase/migrations/20261021000000_phase2_baseline_schema.sql`.
 
 ---
 

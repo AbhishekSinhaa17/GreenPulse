@@ -1,31 +1,76 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { PageContainer } from '../../components/layout/PageContainer';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../hooks/useAuth';
+import { AlertCircle } from 'lucide-react';
 
-export const AuthPage: React.FC<{ mode: 'login' | 'signup' | 'subscribe' }> = ({ mode }) => {
-  const { success, error } = useToast();
+interface AuthPageProps {
+  mode: 'login' | 'signup' | 'subscribe';
+}
+
+export const AuthPage: React.FC<AuthPageProps> = ({ mode }) => {
+  const { success } = useToast();
+  const { signIn, signUp, isConfigured } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
   const [plan, setPlan] = useState<'monthly' | 'yearly'>('monthly');
+  const [isLoading, setIsLoading] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard';
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError(null);
+
     if (!email || !password) {
-      error('Missing Fields', 'Please enter your email and password.');
+      setFormError('Please enter both your email address and password.');
       return;
     }
-    success(
-      mode === 'login' ? 'Signed In' : 'Account Created',
-      `Welcome to GreenPulse. Redirecting to your golfer workspace.`
-    );
-    navigate('/dashboard');
+
+    if (mode !== 'login' && !fullName.trim()) {
+      setFormError('Please enter your full name for membership registration.');
+      return;
+    }
+
+    if (password.length < 6) {
+      setFormError('Password must be at least 6 characters.');
+      return;
+    }
+
+    if (!isConfigured) {
+      setFormError(
+        'Supabase credentials are not configured in .env. Please connect a Supabase project to perform real authentication.'
+      );
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      if (mode === 'login') {
+        await signIn(email, password);
+        success('Signed In', 'Welcome back to your golfer workspace.');
+        navigate(from, { replace: true });
+      } else {
+        await signUp(email, password, fullName);
+        success('Account Created', 'Registration successful. Welcome to GreenPulse!');
+        navigate(from, { replace: true });
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'An error occurred during authentication.';
+      setFormError(message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -112,7 +157,39 @@ export const AuthPage: React.FC<{ mode: 'login' | 'signup' | 'subscribe' }> = ({
           </div>
         )}
 
+        {formError && (
+          <div
+            role="alert"
+            style={{
+              padding: 'var(--space-3) var(--space-4)',
+              backgroundColor: 'var(--color-error-bg)',
+              border: '1px solid var(--color-error-border)',
+              borderRadius: 'var(--radius-md)',
+              marginBottom: 'var(--space-4)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 'var(--space-2)',
+              color: 'var(--color-error)',
+              fontSize: 'var(--text-sm)',
+            }}
+          >
+            <AlertCircle size={16} style={{ flexShrink: 0 }} />
+            <span>{formError}</span>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit}>
+          {mode !== 'login' && (
+            <Input
+              label="Full Name"
+              type="text"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="e.g. Marcus Reid"
+              required
+            />
+          )}
+
           <Input
             label="Email Address"
             type="email"
@@ -128,11 +205,18 @@ export const AuthPage: React.FC<{ mode: 'login' | 'signup' | 'subscribe' }> = ({
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••••••••"
+            hint="Minimum 6 characters."
             required
           />
 
-          <Button variant="primary" type="submit" className="w-full" style={{ marginTop: 'var(--space-4)' }}>
-            {mode === 'login' ? 'Sign In to Workspace' : 'Continue to Charity Selection'}
+          <Button
+            variant="primary"
+            type="submit"
+            className="w-full"
+            isLoading={isLoading}
+            style={{ marginTop: 'var(--space-4)' }}
+          >
+            {mode === 'login' ? 'Sign In to Workspace' : 'Create Account & Continue'}
           </Button>
         </form>
 

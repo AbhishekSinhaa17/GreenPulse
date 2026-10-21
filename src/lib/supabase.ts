@@ -1,23 +1,39 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { env } from './env';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://mock-greenpulse.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'mock-anon-key-placeholder';
-
-export const isSupabaseConfigured = Boolean(
-  import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY
-);
-
-if (!isSupabaseConfigured && typeof window !== 'undefined') {
-  console.info(
-    '%c[GreenPulse Architecture]%c Supabase credentials not detected. Operating with mock data & client-side simulation.',
-    'color: #8EA633; font-weight: bold;',
-    'color: #143525;'
-  );
+export class SupabaseConfigurationError extends Error {
+  constructor(message = 'Supabase credentials are not configured. Please add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your .env file.') {
+    super(message);
+    this.name = 'SupabaseConfigurationError';
+  }
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-  },
-});
+/**
+ * Single instance of Supabase Client.
+ * When unconfigured, a dummy client is provided to prevent boot crashes,
+ * but operations will be guarded by requireSupabase() / env.isSupabaseConfigured.
+ */
+export const supabase: SupabaseClient = createClient(
+  env.supabaseUrl || 'https://placeholder-project.supabase.co',
+  env.supabaseAnonKey || 'placeholder-anon-key',
+  {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+    },
+  }
+);
+
+/**
+ * Asserts that Supabase is properly configured before executing a backend operation.
+ * Prevents silent failures or false successes.
+ */
+export function requireSupabase(): SupabaseClient {
+  if (!env.isSupabaseConfigured) {
+    throw new SupabaseConfigurationError();
+  }
+  return supabase;
+}
+
+export { env };
