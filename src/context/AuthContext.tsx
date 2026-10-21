@@ -11,13 +11,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(() => Boolean(env.isSupabaseConfigured));
 
-  const fetchProfile = useCallback(async (userId: string) => {
+  const fetchProfile = useCallback(async (u: User) => {
     try {
-      const p = await authService.getUserProfile(userId);
+      const p = await authService.ensureUserProfile(u);
       setProfile(p);
     } catch (err) {
-      console.error('[AuthContext] Failed to load profile:', err);
-      setProfile(null);
+      console.error('[AuthContext] Failed to load/ensure profile:', err);
+      // Fallback: try raw query
+      try {
+        const raw = await authService.getUserProfile(u.id);
+        setProfile(raw);
+      } catch {
+        setProfile(null);
+      }
     }
   }, []);
 
@@ -34,7 +40,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSession(initialSession);
       setUser(initialSession?.user ?? null);
       if (initialSession?.user) {
-        fetchProfile(initialSession.user.id).finally(() => {
+        fetchProfile(initialSession.user).finally(() => {
           if (isMounted) setIsLoading(false);
         });
       } else {
@@ -50,7 +56,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSession(newSession);
       setUser(newSession?.user ?? null);
       if (newSession?.user) {
-        await fetchProfile(newSession.user.id);
+        await fetchProfile(newSession.user);
       } else {
         setProfile(null);
       }
@@ -70,7 +76,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(authedUser);
       setSession(newSession);
       if (authedUser) {
-        await fetchProfile(authedUser.id);
+        await fetchProfile(authedUser);
       }
     } finally {
       setIsLoading(false);
@@ -84,10 +90,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(newUser);
       setSession(newSession);
       if (newUser) {
-        await fetchProfile(newUser.id);
+        await fetchProfile(newUser);
       }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const signInWithGoogle = async (redirectTo?: string) => {
+    setIsLoading(true);
+    try {
+      await authService.signInWithGoogle(redirectTo);
+    } catch (err) {
+      setIsLoading(false);
+      throw err;
     }
   };
 
@@ -105,7 +121,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const refreshProfile = async () => {
     if (user) {
-      await fetchProfile(user.id);
+      await fetchProfile(user);
     }
   };
 
@@ -124,6 +140,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isConfigured: env.isSupabaseConfigured,
         signIn,
         signUp,
+        signInWithGoogle,
         signOut,
         refreshProfile,
       }}

@@ -13,6 +13,7 @@ import { DrawsPage } from './features/draws/DrawsPage';
 import { DashboardPage } from './features/dashboard/DashboardPage';
 import { AdminPage } from './features/admin/AdminPage';
 import { AuthPage } from './features/auth/AuthPage';
+import { AuthCallbackPage } from './features/auth/AuthCallbackPage';
 
 export const App: React.FC = () => {
   return (
@@ -46,6 +47,7 @@ export const App: React.FC = () => {
                 <Route path="/login" element={<AuthPage mode="login" />} />
                 <Route path="/signup" element={<AuthPage mode="signup" />} />
                 <Route path="/subscribe" element={<AuthPage mode="subscribe" />} />
+                <Route path="/auth/callback" element={<AuthCallbackPage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </div>
