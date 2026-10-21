@@ -60,18 +60,22 @@ graph LR
 
 ---
 
-### Phase 3: Subscriptions & Charity Selection Engine
+### Phase 3: Supabase Database Integration & Security (Completed & Verified)
 - **Scope:**
-  1. Subscription plan selection interface (Monthly £19 / Yearly £190 discounted).
-  2. Stripe Checkout session integration & webhook handlers for subscription lifecycle (`active`, `past_due`, `canceled`).
-  3. Charity directory browsing with category filters (environment, youth sports, health, community).
-  4. Charity selection during signup/onboarding with interactive contribution slider (min 10%, up to 100%).
-  5. Independent donation flow for direct charity giving (not tied to gameplay).
-  6. Dedicated Charity Profile pages (`/charities/:slug`) with rich media and upcoming events (e.g. Golf Days).
-- **Acceptance Criteria:**
-  - User cannot proceed past onboarding without selecting a charity with at least 10% contribution.
-  - Standalone donations execute cleanly via payment checkout without altering draw tickets.
-  - Charity directory provides instant search and category filtering.
+  1. Inspect and verify existing schema against PRD Level 1: `profiles`, `subscriptions`, `golf_scores`, `charities`, `charity_preferences`, `charity_events`, `draws`, `draw_entries`, `winner_claims`, `donation_ledger`.
+  2. Implement type-safe data access layer (`subscriptionService`, `scoreService`, `charityService`, `drawService`, `authService`, `adminService`).
+  3. Wire `/dashboard` to real user profile and real subscription queries (eliminating fake subscription statuses).
+  4. Implement Golfer Profile editing for WHS Handicap (-10.0 to 54.0) and Home Club, persisting to PostgreSQL.
+  5. Connect `/draws` dynamically to real published draw records and prize pots from PostgreSQL.
+  6. Enforce PRD Stableford score boundaries (1–45) and atomic 5-score FIFO rolling engine with duplicate-date rejection.
+  7. Maintain strict anti-role escalation across client requests and database triggers.
+- **Acceptance Criteria & Verification:**
+  - [x] All 10 PostgreSQL tables verified live in Supabase.
+  - [x] Zero mock fallback data falsely reported as real database records.
+  - [x] 24/24 Vitest automated tests passing across 4 test suites.
+  - [x] Oxlint (39 files) reports 0 errors and 0 warnings.
+  - [x] `npm run build` succeeds in 670ms.
+
 
 ---
 

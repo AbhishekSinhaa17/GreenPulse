@@ -11,26 +11,37 @@ import { useAuth } from '../../hooks/useAuth';
 import { scoreService } from '../../services/scoreService';
 import { charityService } from '../../services/charityService';
 import { drawService } from '../../services/drawService';
-import type { GolfScore, CharityPreference, WinnerClaim } from '../../types';
+import { subscriptionService } from '../../services/subscriptionService';
+import { authService } from '../../services/authService';
+import type { GolfScore, CharityPreference, WinnerClaim, Subscription } from '../../types';
 import {
   Plus,
   Trash2,
   Upload,
   CreditCard,
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  UserCheck
 } from 'lucide-react';
 
 export const DashboardPage: React.FC = () => {
   const { success, error, warning } = useToast();
-  const { user, profile, isConfigured } = useAuth();
+  const { user, profile, refreshProfile, isConfigured } = useAuth();
 
   // State
   const [scores, setScores] = useState<GolfScore[]>([]);
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [charityPref, setCharityPref] = useState<CharityPreference | null>(null);
   const [winnerClaims, setWinnerClaims] = useState<WinnerClaim[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  // Profile Edit Modal (§ 10: Golfer Handicap & Home Club)
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [editFullName, setEditFullName] = useState(profile?.full_name || '');
+  const [editHandicap, setEditHandicap] = useState<string>(profile?.handicap ? String(profile.handicap) : '');
+  const [editHomeClub, setEditHomeClub] = useState(profile?.home_club || '');
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
 
   // Score Entry Modal
   const [isAddScoreOpen, setIsAddScoreOpen] = useState(false);
@@ -58,11 +69,13 @@ export const DashboardPage: React.FC = () => {
 
     Promise.all([
       scoreService.getScores(user.id),
+      subscriptionService.getUserSubscription(user.id),
       charityService.getUserCharityPreference(user.id),
       drawService.getUserWinnerClaims(user.id),
     ])
-      .then(([fetchedScores, fetchedPref, fetchedClaims]) => {
+      .then(([fetchedScores, fetchedSub, fetchedPref, fetchedClaims]) => {
         setScores(fetchedScores);
+        setSubscription(fetchedSub);
         setCharityPref(fetchedPref);
         setWinnerClaims(fetchedClaims);
       })
@@ -156,9 +169,31 @@ export const DashboardPage: React.FC = () => {
     }
   };
 
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    setIsUpdatingProfile(true);
+    try {
+      const parsedHandicap = editHandicap.trim() !== '' ? Number(editHandicap) : undefined;
+      await authService.updateProfile(user.id, {
+        full_name: editFullName.trim() || profile?.full_name,
+        handicap: parsedHandicap,
+        home_club: editHomeClub.trim() || undefined,
+      });
+      await refreshProfile();
+      success('Profile Updated', 'Your golfer details have been saved to PostgreSQL.');
+      setIsEditProfileOpen(false);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to update profile.';
+      error('Update Error', msg);
+    } finally {
+      setIsUpdatingProfile(false);
+    }
+  };
+
   return (
     <PageContainer>
-      {/* 1. Header: Subscription Status (§ 10: "active / inactive / renewal date") */}
+      {/* 1. Header: Real Subscription Status (§ 10: "active / inactive / renewal date") */}
       <div
         className="flex flex-col md-flex-row justify-between items-start md-items-center gap-4"
         style={{
@@ -174,23 +209,65 @@ export const DashboardPage: React.FC = () => {
           <h2 style={{ color: 'var(--forest-950)' }}>
             Welcome back, {profile?.full_name || user?.email?.split('@')[0] || 'Golfer'}
           </h2>
+          <div style={{ display: 'flex', gap: 'var(--space-4)', marginTop: 'var(--space-2)', fontSize: 'var(--text-xs)', color: 'var(--charcoal-700)' }}>
+            <span>Handicap: <strong style={{ color: 'var(--forest-800)' }}>{profile?.handicap !== undefined && profile?.handicap !== null ? profile.handicap : 'Unassigned'}</strong></span>
+            <span>•</span>
+            <span>Home Club: <strong style={{ color: 'var(--forest-800)' }}>{profile?.home_club || 'Not set'}</strong></span>
+            <span>•</span>
+            <button
+              onClick={() => {
+                setEditFullName(profile?.full_name || '');
+                setEditHandicap(profile?.handicap !== undefined && profile?.handicap !== null ? String(profile.handicap) : '');
+                setEditHomeClub(profile?.home_club || '');
+                setIsEditProfileOpen(true);
+              }}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--forest-700)',
+                textDecoration: 'underline',
+                cursor: 'pointer',
+                fontWeight: 600,
+                padding: 0,
+              }}
+            >
+              Edit Golfer Profile
+            </button>
+          </div>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', flexWrap: 'wrap' }}>
           <div style={{ textAlign: 'right' }}>
             <div className="flex items-center gap-2">
-              <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>Status:</span>
-              <Badge variant={isConfigured ? 'success' : 'neutral'}>
-                {isConfigured ? 'Active Subscriber' : 'Offline / Setup Needed'}
-              </Badge>
+              <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>Membership:</span>
+              {subscription && subscription.status === 'active' ? (
+                <Badge variant="success">Active Member</Badge>
+              ) : (
+                <Badge variant="neutral">No Active Plan</Badge>
+              )}
             </div>
             <span style={{ fontSize: 'var(--text-xs)', color: 'var(--charcoal-600)', display: 'block', marginTop: '2px' }}>
-              {isConfigured ? 'Renews Monthly · £19/mo' : 'Connect Supabase in .env'}
+              {subscription && subscription.status === 'active'
+                ? `${subscription.plan_tier === 'yearly' ? 'Yearly Plan (£190/yr)' : 'Monthly Plan (£19/mo)'} · Renews ${new Date(subscription.current_period_end).toLocaleDateString()}`
+                : 'Subscribe to activate monthly draw ticket'}
             </span>
           </div>
-          <Button variant="outline" size="sm" leftIcon={<CreditCard size={14} />}>
-            Manage Billing
-          </Button>
+
+          {subscription && subscription.status === 'active' ? (
+            <Button variant="outline" size="sm" leftIcon={<CreditCard size={14} />}>
+              Manage Billing
+            </Button>
+          ) : (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => window.location.assign('/subscribe')}
+              leftIcon={<CreditCard size={14} />}
+            >
+              Join Membership
+            </Button>
+          )}
+
           <Button
             variant="ghost"
             size="sm"
@@ -543,6 +620,60 @@ export const DashboardPage: React.FC = () => {
           <p style={{ fontSize: 'var(--text-xs)', color: 'var(--charcoal-600)' }}>
             Uploaded to private Supabase storage. Admin reviews round date and score authenticity before payout release (§ 09).
           </p>
+        </form>
+      </Dialog>
+
+      {/* Modal 3: Edit Golfer Profile Dialog (§ 10) */}
+      <Dialog
+        isOpen={isEditProfileOpen}
+        onClose={() => setIsEditProfileOpen(false)}
+        title="Edit Golfer Profile Details"
+        description="Update your display name, current WHS handicap, and home golf club."
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setIsEditProfileOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              isLoading={isUpdatingProfile}
+              onClick={handleUpdateProfile}
+              leftIcon={<UserCheck size={14} />}
+            >
+              Save Profile
+            </Button>
+          </>
+        }
+      >
+        <form onSubmit={handleUpdateProfile} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+          <Input
+            label="Full Name"
+            type="text"
+            value={editFullName}
+            onChange={(e) => setEditFullName(e.target.value)}
+            placeholder="e.g. Marcus Reid"
+            required
+          />
+
+          <Input
+            label="Handicap Index (e.g. 14.2)"
+            type="number"
+            step="0.1"
+            min="-10"
+            max="54"
+            value={editHandicap}
+            onChange={(e) => setEditHandicap(e.target.value)}
+            placeholder="e.g. 14.2"
+            hint="Official WHS handicap index (between -10 and 54)."
+          />
+
+          <Input
+            label="Home Golf Club / Course"
+            type="text"
+            value={editHomeClub}
+            onChange={(e) => setEditHomeClub(e.target.value)}
+            placeholder="e.g. St Andrews Links, Scotland"
+          />
         </form>
       </Dialog>
     </PageContainer>

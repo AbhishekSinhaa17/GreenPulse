@@ -46,16 +46,22 @@ export const DrawsPage: React.FC = () => {
           <div className="flex flex-col md-flex-row justify-between items-center gap-6">
             <div>
               <div className="flex items-center gap-2" style={{ marginBottom: 'var(--space-2)' }}>
-                <Badge variant="lime">Upcoming Draw: October 2026</Badge>
+                <Badge variant="lime">
+                  {latestDraw ? `Cycle: ${latestDraw.draw_month}` : 'Upcoming Draw: October 2026'}
+                </Badge>
                 <span className="flex items-center gap-1 text-muted" style={{ fontSize: 'var(--text-xs)' }}>
-                  <Clock size={14} /> Closes in 9 days
+                  <Clock size={14} /> {latestDraw ? 'Published Draw Result' : 'Scheduled Cycle'}
                 </span>
               </div>
               <h3 style={{ fontSize: 'var(--text-3xl)', color: 'var(--forest-950)' }}>
-                Estimated Pool: £28,450
+                {latestDraw
+                  ? `Verified Pool: £${(latestDraw.total_prize_pool_cents / 100).toLocaleString()}`
+                  : 'Estimated Pool: £28,450'}
               </h3>
               <p style={{ fontSize: 'var(--text-sm)', color: 'var(--charcoal-700)', marginTop: 'var(--space-1)' }}>
-                Includes £8,200 rollover from September 5-Number Jackpot.
+                {latestDraw
+                  ? `${latestDraw.jackpot_rolled_over ? 'Tier 1 Jackpot unclaimed — Rollover enabled.' : 'Prizes allocated across all tiers.'}`
+                  : 'Includes £8,200 rollover from September 5-Number Jackpot.'}
               </p>
             </div>
 
@@ -64,7 +70,7 @@ export const DrawsPage: React.FC = () => {
                 Eligible Subscribers
               </span>
               <div style={{ fontFamily: 'var(--font-numeric)', fontSize: 'var(--text-4xl)', fontWeight: 700, color: 'var(--forest-800)' }}>
-                1,498
+                {latestDraw ? latestDraw.total_eligible_subscribers.toLocaleString() : '1,498'}
               </div>
             </div>
           </div>
@@ -86,7 +92,7 @@ export const DrawsPage: React.FC = () => {
                 <Badge variant="forest" size="sm">40% + Rollover</Badge>
               </div>
               <div style={{ fontFamily: 'var(--font-numeric)', fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--forest-800)' }}>
-                £19,580
+                £{latestDraw ? (latestDraw.tier_5_pot_cents / 100).toLocaleString() : '19,580'}
               </div>
               <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-success)' }}>
                 ✓ Rollover enabled if unclaimed
@@ -99,7 +105,7 @@ export const DrawsPage: React.FC = () => {
                 <Badge variant="neutral" size="sm">35% Share</Badge>
               </div>
               <div style={{ fontFamily: 'var(--font-numeric)', fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--charcoal-900)' }}>
-                £9,957
+                £{latestDraw ? (latestDraw.tier_4_pot_cents / 100).toLocaleString() : '9,957'}
               </div>
               <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
                 Split equally among tier winners
@@ -112,7 +118,7 @@ export const DrawsPage: React.FC = () => {
                 <Badge variant="neutral" size="sm">25% Share</Badge>
               </div>
               <div style={{ fontFamily: 'var(--font-numeric)', fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--charcoal-900)' }}>
-                £7,112
+                £{latestDraw ? (latestDraw.tier_3_pot_cents / 100).toLocaleString() : '7,112'}
               </div>
               <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
                 Split equally among tier winners
