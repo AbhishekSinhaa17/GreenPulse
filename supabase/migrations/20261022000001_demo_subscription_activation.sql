@@ -21,7 +21,7 @@ BEGIN
   END IF;
 
   IF p_charity_percentage < 10 OR p_charity_percentage > 50 THEN
-    RAISE EXCEPTION 'Invalid charity percentage: Must be between 10% and 50%.';
+    RAISE EXCEPTION 'Invalid charity percentage: Must be between 10%% and 50%%.';
   END IF;
 
   IF p_plan_tier = 'yearly' THEN
