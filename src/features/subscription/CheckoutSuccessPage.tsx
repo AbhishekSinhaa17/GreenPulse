@@ -23,7 +23,7 @@ export const CheckoutSuccessPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const sessionId = searchParams.get('session_id');
   const checkoutType = searchParams.get('type');
-  const isDemo = searchParams.get('demo') === 'true';
+  const isDemo = searchParams.get('demo') === 'true' || searchParams.get('fallback') === 'true' || env.demoPayments;
   const planParam = (searchParams.get('plan') as 'monthly' | 'yearly') || 'monthly';
 
   const { user } = useAuth();
@@ -42,27 +42,37 @@ export const CheckoutSuccessPage: React.FC = () => {
   const verifyAuthoritativeStatus = useCallback(async () => {
 
     if (isDemo) {
-      if (user?.id) {
-        try {
-          const sub = await subscriptionService.getUserSubscription(user.id);
-          if (sub && sub.status === 'active') {
-            setSubscription(sub);
-          } else {
-            setSubscription({
-              id: 'demo-sub',
-              user_id: user.id,
-              plan_tier: planParam,
-              status: 'active',
-              current_period_start: new Date().toISOString(),
-              current_period_end: new Date(Date.now() + (planParam === 'yearly' ? 365 : 30) * 86400000).toISOString(),
-              cancel_at_period_end: false,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            });
-          }
-        } catch {
-
+      const activeUserId = user?.id || 'demo-user';
+      try {
+        const sub = await subscriptionService.getUserSubscription(activeUserId);
+        if (sub && sub.status === 'active') {
+          setSubscription(sub);
+        } else {
+          const fallbackSub: Subscription = {
+            id: `demo-sub-${Date.now()}`,
+            user_id: activeUserId,
+            plan_tier: planParam,
+            status: 'active',
+            current_period_start: new Date().toISOString(),
+            current_period_end: new Date(Date.now() + (planParam === 'yearly' ? 365 : 30) * 86400000).toISOString(),
+            cancel_at_period_end: false,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+          setSubscription(fallbackSub);
         }
+      } catch {
+        setSubscription({
+          id: 'demo-sub',
+          user_id: activeUserId,
+          plan_tier: planParam,
+          status: 'active',
+          current_period_start: new Date().toISOString(),
+          current_period_end: new Date(Date.now() + (planParam === 'yearly' ? 365 : 30) * 86400000).toISOString(),
+          cancel_at_period_end: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
       }
       setIsConfirmed(true);
       setIsVerifying(false);

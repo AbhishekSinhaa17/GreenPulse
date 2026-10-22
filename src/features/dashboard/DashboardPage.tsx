@@ -513,6 +513,12 @@ export const DashboardPage: React.FC = () => {
               <Button
                 variant="outline"
                 size="sm"
+                onClick={() => {
+                  success(
+                    "Demo Membership Active",
+                    `You are subscribed to the ${subscription.plan_tier === "yearly" ? "Yearly" : "Monthly"} Plan. Simulated payments are enabled platform-wide.`
+                  );
+                }}
                 leftIcon={<CreditCard size={14} />}
               >
                 Manage Billing

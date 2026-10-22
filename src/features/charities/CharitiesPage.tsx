@@ -169,7 +169,7 @@ export const CharitiesPage: React.FC = () => {
         amountCents,
       );
 
-      if (env.demoPayments) {
+      if (env.demoPayments || !result.url || result.sessionId.startsWith('demo_')) {
         setCharities((prev) =>
           prev.map((c) =>
             c.id === donatingCharity.id
@@ -178,7 +178,7 @@ export const CharitiesPage: React.FC = () => {
           )
         );
         try {
-          confetti({ particleCount: 75, spread: 60, origin: { y: 0.6 } });
+          confetti({ particleCount: 80, spread: 65, origin: { y: 0.6 } });
         } catch {
 
         }
@@ -186,6 +186,7 @@ export const CharitiesPage: React.FC = () => {
           "Demo Donation Successful!",
           `Simulated gift of ₹${amountInRupees.toLocaleString('en-IN')} to ${donatingCharity.name} processed.`
         );
+        setIsDonating(false);
         setDonatingCharity(null);
         return;
       }
@@ -206,17 +207,32 @@ export const CharitiesPage: React.FC = () => {
   };
 
   const fetchCharities = useCallback(() => {
-    if (!isConfigured) return;
+    const applyDemoIncrements = (list: Charity[]): Charity[] => {
+      if (typeof window === 'undefined') return list;
+      return list.map((c) => {
+        try {
+          const extra = parseInt(localStorage.getItem(`gp_charity_raised_${c.id}`) || '0', 10);
+          return extra > 0 ? { ...c, total_raised_cents: (c.total_raised_cents || 0) + extra } : c;
+        } catch {
+          return c;
+        }
+      });
+    };
+
+    if (!isConfigured) {
+      setCharities(applyDemoIncrements(defaultCharities));
+      return;
+    }
 
     queueMicrotask(() => setIsLoading(true));
     charityService
       .getCharities()
       .then((data) => {
         if (data && data.length > 0) {
-          setCharities(data);
+          setCharities(applyDemoIncrements(data));
           setIsFromDatabase(true);
         } else {
-          setCharities(defaultCharities);
+          setCharities(applyDemoIncrements(defaultCharities));
           setIsFromDatabase(false);
         }
       })
@@ -224,7 +240,7 @@ export const CharitiesPage: React.FC = () => {
         const msg =
           err instanceof Error ? err.message : "Failed to load charities.";
         setLoadError(msg);
-        setCharities(defaultCharities);
+        setCharities(applyDemoIncrements(defaultCharities));
         setIsFromDatabase(false);
       })
       .finally(() => {

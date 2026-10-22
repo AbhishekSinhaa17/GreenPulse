@@ -87,10 +87,34 @@ export const SubscriptionPage: React.FC = () => {
     };
   }, []);
 
+  const handleGuestDemoActivation = async () => {
+    setIsSubmitting(true);
+    setCheckoutError(null);
+    try {
+      const sub = await subscriptionService.activateDemoSubscription(
+        plan,
+        selectedCharityId || undefined,
+        charityPercentage
+      );
+      setActiveSubscription(sub);
+      navigate(`/subscribe/success?demo=true&plan=${plan}`);
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "Failed to activate demo subscription.";
+      setCheckoutError(msg);
+      setIsSubmitting(false);
+    }
+  };
+
   const handleProceedToCheckout = async () => {
     setCheckoutError(null);
 
     if (!isAuthenticated) {
+      if (env.demoPayments) {
+        return handleGuestDemoActivation();
+      }
       navigate("/login", { state: { from: { pathname: "/subscribe" } } });
       return;
     }
@@ -139,7 +163,11 @@ export const SubscriptionPage: React.FC = () => {
       );
 
       if (result.url) {
-        window.location.assign(result.url);
+        if (result.url.includes("demo=true") || result.sessionId?.startsWith("demo-")) {
+          navigate(`/subscribe/success?demo=true&plan=${plan}`);
+        } else {
+          window.location.assign(result.url);
+        }
       } else {
         throw new Error("No checkout URL received from server.");
       }
@@ -535,9 +563,21 @@ export const SubscriptionPage: React.FC = () => {
               </Button>
             )
           ) : (
-            <div className="sp-guest-cta">
+            <div className="sp-guest-cta" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+              {env.demoPayments && (
+                <Button
+                  variant="primary"
+                  size="lg"
+                  onClick={handleGuestDemoActivation}
+                  isLoading={isSubmitting}
+                  leftIcon={<Sparkles size={18} />}
+                  className="sp-checkout-btn"
+                >
+                  Simulate Demo Payment · Activate (₹{baseFee.toLocaleString('en-IN')})
+                </Button>
+              )}
               <Button
-                variant="primary"
+                variant={env.demoPayments ? "outline" : "primary"}
                 size="lg"
                 onClick={() =>
                   navigate("/login", {
