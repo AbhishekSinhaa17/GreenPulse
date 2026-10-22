@@ -557,25 +557,21 @@ export const SubscriptionPage: React.FC = () => {
               >
                 {activeSubscription
                   ? "Already Subscribed"
-                  : env.demoPayments
-                    ? `Simulate Demo Payment · Activate (₹${baseFee.toLocaleString('en-IN')})`
-                    : `Proceed to Stripe Checkout (₹${baseFee.toLocaleString('en-IN')})`}
+                  : `Confirm & Activate Membership (₹${baseFee.toLocaleString('en-IN')})`}
               </Button>
             )
           ) : (
             <div className="sp-guest-cta" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-              {env.demoPayments && (
-                <Button
-                  variant="primary"
-                  size="lg"
-                  onClick={handleGuestDemoActivation}
-                  isLoading={isSubmitting}
-                  leftIcon={<Sparkles size={18} />}
-                  className="sp-checkout-btn"
-                >
-                  Simulate Demo Payment · Activate (₹{baseFee.toLocaleString('en-IN')})
-                </Button>
-              )}
+              <Button
+                variant="primary"
+                size="lg"
+                onClick={handleGuestDemoActivation}
+                isLoading={isSubmitting}
+                leftIcon={<Sparkles size={18} />}
+                className="sp-checkout-btn"
+              >
+                Confirm & Activate Membership (₹{baseFee.toLocaleString('en-IN')})
+              </Button>
               <Button
                 variant={env.demoPayments ? "outline" : "primary"}
                 size="lg"

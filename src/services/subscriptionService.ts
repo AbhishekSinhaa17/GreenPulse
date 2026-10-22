@@ -110,6 +110,23 @@ export const subscriptionService = {
 
     const client = requireSupabase();
 
+    // Ensure profiles role is subscriber:
+    try {
+      const { data: prof } = await client
+        .from('profiles')
+        .select('role')
+        .eq('id', currentUser.id)
+        .maybeSingle();
+      if (prof && prof.role !== 'admin') {
+        await client
+          .from('profiles')
+          .update({ role: 'subscriber', updated_at: now.toISOString() })
+          .eq('id', currentUser.id);
+      }
+    } catch (profErr) {
+      console.warn('[subscriptionService] Profile role update warning:', profErr);
+    }
+
     // Authenticated user demo activation via RPC:
     try {
       const { data, error } = await client.rpc('activate_demo_subscription', {

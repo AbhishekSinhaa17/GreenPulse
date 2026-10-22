@@ -16,31 +16,42 @@ export const stripeService = {
 
   async executeDemoDonation(
     charityId: string,
-    amountCents: number
+    amountCents: number,
+    charitySlug?: string
   ): Promise<CheckoutResult> {
     if (env.isSupabaseConfigured) {
       try {
         const client = requireSupabase();
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(charityId);
+
+        let dbCharity: { id: string; total_raised_cents: number } | null = null;
         if (isUuid) {
-          const { data: charity } = await client
+          const { data } = await client
             .from('charities')
-            .select('total_raised_cents')
+            .select('id, total_raised_cents')
             .eq('id', charityId)
             .maybeSingle();
+          dbCharity = data;
+        } else if (charitySlug) {
+          const { data } = await client
+            .from('charities')
+            .select('id, total_raised_cents')
+            .eq('slug', charitySlug)
+            .maybeSingle();
+          dbCharity = data;
+        }
 
-          if (charity) {
-            const currentCents = charity.total_raised_cents || 0;
-            await client
-              .from('charities')
-              .update({ total_raised_cents: currentCents + amountCents })
-              .eq('id', charityId);
-          }
+        if (dbCharity) {
+          const currentCents = dbCharity.total_raised_cents || 0;
+          await client
+            .from('charities')
+            .update({ total_raised_cents: currentCents + amountCents })
+            .eq('id', dbCharity.id);
         }
 
         const { data: { user } } = await client.auth.getUser();
         await client.from('donation_ledger').insert({
-          charity_id: isUuid ? charityId : null,
+          charity_id: dbCharity?.id || (isUuid ? charityId : null),
           donor_user_id: user?.id || null,
           amount_cents: amountCents,
           stripe_payment_intent_id: `demo_pi_${Date.now()}`,
@@ -53,9 +64,12 @@ export const stripeService = {
 
     if (typeof window !== 'undefined') {
       try {
-        const key = `gp_charity_raised_${charityId}`;
-        const prev = parseInt(localStorage.getItem(key) || '0', 10);
-        localStorage.setItem(key, String(prev + amountCents));
+        const keys = [`gp_charity_raised_${charityId}`];
+        if (charitySlug) keys.push(`gp_charity_raised_${charitySlug}`);
+        for (const k of keys) {
+          const prev = parseInt(localStorage.getItem(k) || '0', 10);
+          localStorage.setItem(k, String(prev + amountCents));
+        }
       } catch {
         // Ignore localStorage issues
       }
@@ -72,75 +86,21 @@ export const stripeService = {
     charityId?: string,
     charityPercentage: number = 10
   ): Promise<CheckoutResult> {
-    if (env.demoPayments) {
-      const sub = await subscriptionService.activateDemoSubscription(
-        planTier,
-        charityId,
-        charityPercentage
-      );
-      return {
-        url: `${env.appUrl}/subscribe/success?demo=true&plan=${planTier}`,
-        sessionId: sub.id,
-      };
-    }
-
-    if (!env.isSupabaseConfigured) {
-      const sub = await subscriptionService.activateDemoSubscription(
-        planTier,
-        charityId,
-        charityPercentage
-      );
-      return {
-        url: `${env.appUrl}/subscribe/success?demo=true&plan=${planTier}`,
-        sessionId: sub.id,
-      };
-    }
-
-    try {
-      const client = requireSupabase();
-      const { data: { session } } = await client.auth.getSession();
-
-      if (!session || !session.user) {
-        throw new Error('You must be signed in to join a GreenPulse membership.');
-      }
-
-      const { data, error } = await client.functions.invoke('create-checkout-session', {
-        body: {
-          mode: 'subscription',
-          planTier,
-          charityId: charityId || undefined,
-          charityPercentage: charityPercentage || 10,
-        },
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      if (data?.url) {
-        return {
-          url: data.url,
-          sessionId: data.sessionId,
-        };
-      }
-      throw new Error(data?.error || 'Failed to retrieve checkout URL from payment gateway.');
-    } catch (err: unknown) {
-      console.warn('[stripeService] Edge function subscription checkout unavailable, falling back to simulated demo payment:', err);
-      const sub = await subscriptionService.activateDemoSubscription(
-        planTier,
-        charityId,
-        charityPercentage
-      );
-      return {
-        url: `${env.appUrl}/subscribe/success?demo=true&plan=${planTier}&fallback=true`,
-        sessionId: sub.id,
-      };
-    }
+    const sub = await subscriptionService.activateDemoSubscription(
+      planTier,
+      charityId,
+      charityPercentage
+    );
+    return {
+      url: `${env.appUrl}/subscribe/success?demo=true&plan=${planTier}`,
+      sessionId: sub.id,
+    };
   },
 
   async createDonationCheckout(
     charityId: string,
-    amountCents: number
+    amountCents: number,
+    charitySlug?: string
   ): Promise<CheckoutResult> {
     if (!charityId) {
       throw new Error('Please select a charity to donate to.');
@@ -150,40 +110,8 @@ export const stripeService = {
       throw new Error('Minimum donation amount is ₹110.00 (11,000 paise).');
     }
 
-    if (env.demoPayments) {
-      return this.executeDemoDonation(charityId, amountCents);
-    }
-
-    if (!env.isSupabaseConfigured) {
-      return this.executeDemoDonation(charityId, amountCents);
-    }
-
-    try {
-      const client = requireSupabase();
-
-      const { data, error } = await client.functions.invoke('create-checkout-session', {
-        body: {
-          mode: 'donation',
-          charityId,
-          amountCents,
-        },
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      if (data?.url) {
-        return {
-          url: data.url,
-          sessionId: data.sessionId,
-        };
-      }
-      throw new Error(data?.error || 'Failed to retrieve donation checkout URL.');
-    } catch (err: unknown) {
-      console.warn('[stripeService] Edge function donation checkout error, falling back to simulated demo payment:', err);
-      return this.executeDemoDonation(charityId, amountCents);
-    }
+    return this.executeDemoDonation(charityId, amountCents, charitySlug);
   },
 };
+
 

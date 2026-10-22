@@ -5,9 +5,7 @@ import {
   RefreshCw,
   AlertCircle,
   Heart,
-  CreditCard,
   X,
-  ShieldCheck,
   Search,
   Leaf,
   Users,
@@ -24,7 +22,6 @@ import { charityService } from "../../services/charityService";
 import { stripeService } from "../../services/stripeService";
 import { useAuth } from "../../hooks/useAuth";
 import { useToast } from "../../context/ToastContext";
-import { env } from "../../lib/supabase";
 import confetti from "canvas-confetti";
 import type { Charity } from "../../types";
 
@@ -164,38 +161,32 @@ export const CharitiesPage: React.FC = () => {
 
     setIsDonating(true);
     try {
-      const result = await stripeService.createDonationCheckout(
+      await stripeService.createDonationCheckout(
         donatingCharity.id,
         amountCents,
+        donatingCharity.slug,
       );
 
-      if (env.demoPayments || !result.url || result.sessionId.startsWith('demo_')) {
-        setCharities((prev) =>
-          prev.map((c) =>
-            c.id === donatingCharity.id
-              ? { ...c, total_raised_cents: (c.total_raised_cents || 0) + amountCents }
-              : c
-          )
-        );
-        try {
-          confetti({ particleCount: 80, spread: 65, origin: { y: 0.6 } });
-        } catch {
+      setCharities((prev) =>
+        prev.map((c) =>
+          c.id === donatingCharity.id || (donatingCharity.slug && c.slug === donatingCharity.slug)
+            ? { ...c, total_raised_cents: (c.total_raised_cents || 0) + amountCents }
+            : c
+        )
+      );
 
-        }
-        toast.success(
-          "Demo Donation Successful!",
-          `Simulated gift of ₹${amountInRupees.toLocaleString('en-IN')} to ${donatingCharity.name} processed.`
-        );
-        setIsDonating(false);
-        setDonatingCharity(null);
-        return;
+      try {
+        confetti({ particleCount: 85, spread: 70, origin: { y: 0.6 } });
+      } catch {
+
       }
 
-      if (result.url) {
-        window.location.assign(result.url);
-      } else {
-        throw new Error("Failed to obtain donation checkout URL from server.");
-      }
+      toast.success(
+        "Donation Confirmed!",
+        `Gift of ₹${amountInRupees.toLocaleString('en-IN')} to ${donatingCharity.name} recorded and credited in real time.`
+      );
+      setIsDonating(false);
+      setDonatingCharity(null);
     } catch (err: unknown) {
       const msg =
         err instanceof Error
@@ -855,22 +846,17 @@ export const CharitiesPage: React.FC = () => {
                   alignItems: "center",
                   gap: "var(--space-2)",
                   fontSize: "var(--text-xs)",
-                  color: env.demoPayments ? "var(--forest-700)" : "var(--charcoal-600)",
+                  color: "var(--forest-800)",
                   marginBottom: "var(--space-5)",
-                  backgroundColor: env.demoPayments ? "var(--forest-50)" : "transparent",
-                  padding: env.demoPayments ? "var(--space-2) var(--space-3)" : 0,
+                  backgroundColor: "var(--forest-50)",
+                  border: "1px solid var(--forest-200)",
+                  padding: "var(--space-3) var(--space-4)",
                   borderRadius: "var(--radius-md)",
                 }}
               >
-                {env.demoPayments ? (
-                  <Sparkles size={16} color="var(--forest-700)" />
-                ) : (
-                  <ShieldCheck size={16} color="var(--forest-700)" />
-                )}
+                <Sparkles size={16} color="var(--forest-700)" />
                 <span>
-                  {env.demoPayments
-                    ? "Evaluation Demo Mode: Instant simulated donation without charging a card."
-                    : "Processed securely via Stripe Checkout. Receipt emailed directly."}
+                  Simulated Payment Mode: Your donation is processed and credited immediately to this verified cause.
                 </span>
               </div>
 
@@ -886,9 +872,9 @@ export const CharitiesPage: React.FC = () => {
                     onClick={handleProceedDonation}
                     isLoading={isDonating}
                     className="w-full"
-                    leftIcon={env.demoPayments ? <Sparkles size={16} /> : <CreditCard size={16} />}
+                    leftIcon={<Heart size={16} />}
                   >
-                    {env.demoPayments ? "Complete Demo Donation (₹" : "Proceed to Stripe Checkout (₹"}
+                    Confirm Donation (₹
                     {customAmountStr
                       ? Number(customAmountStr).toLocaleString('en-IN')
                       : selectedDonationAmount.toLocaleString('en-IN')})
