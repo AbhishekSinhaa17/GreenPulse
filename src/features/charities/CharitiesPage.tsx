@@ -23,6 +23,9 @@ import { Button } from "../../components/ui/Button";
 import { charityService } from "../../services/charityService";
 import { stripeService } from "../../services/stripeService";
 import { useAuth } from "../../hooks/useAuth";
+import { useToast } from "../../context/ToastContext";
+import { env } from "../../lib/supabase";
+import confetti from "canvas-confetti";
 import type { Charity } from "../../types";
 
 const defaultCharities: Charity[] = [
@@ -123,6 +126,7 @@ const modalVariants: Variants = {
 
 export const CharitiesPage: React.FC = () => {
   const { isConfigured } = useAuth();
+  const toast = useToast();
   const [charities, setCharities] = useState<Charity[]>(defaultCharities);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -164,6 +168,28 @@ export const CharitiesPage: React.FC = () => {
         donatingCharity.id,
         amountCents,
       );
+
+      if (env.demoPayments) {
+        setCharities((prev) =>
+          prev.map((c) =>
+            c.id === donatingCharity.id
+              ? { ...c, total_raised_cents: (c.total_raised_cents || 0) + amountCents }
+              : c
+          )
+        );
+        try {
+          confetti({ particleCount: 75, spread: 60, origin: { y: 0.6 } });
+        } catch {
+
+        }
+        toast.success(
+          "Demo Donation Successful!",
+          `Simulated gift of ₹${amountInRupees.toLocaleString('en-IN')} to ${donatingCharity.name} processed.`
+        );
+        setDonatingCharity(null);
+        return;
+      }
+
       if (result.url) {
         window.location.assign(result.url);
       } else {
@@ -813,14 +839,22 @@ export const CharitiesPage: React.FC = () => {
                   alignItems: "center",
                   gap: "var(--space-2)",
                   fontSize: "var(--text-xs)",
-                  color: "var(--charcoal-600)",
+                  color: env.demoPayments ? "var(--forest-700)" : "var(--charcoal-600)",
                   marginBottom: "var(--space-5)",
+                  backgroundColor: env.demoPayments ? "var(--forest-50)" : "transparent",
+                  padding: env.demoPayments ? "var(--space-2) var(--space-3)" : 0,
+                  borderRadius: "var(--radius-md)",
                 }}
               >
-                <ShieldCheck size={16} color="var(--forest-700)" />
+                {env.demoPayments ? (
+                  <Sparkles size={16} color="var(--forest-700)" />
+                ) : (
+                  <ShieldCheck size={16} color="var(--forest-700)" />
+                )}
                 <span>
-                  Processed securely via Stripe Checkout. Receipt emailed
-                  directly.
+                  {env.demoPayments
+                    ? "Evaluation Demo Mode: Instant simulated donation without charging a card."
+                    : "Processed securely via Stripe Checkout. Receipt emailed directly."}
                 </span>
               </div>
 
@@ -836,9 +870,9 @@ export const CharitiesPage: React.FC = () => {
                     onClick={handleProceedDonation}
                     isLoading={isDonating}
                     className="w-full"
-                    leftIcon={<CreditCard size={16} />}
+                    leftIcon={env.demoPayments ? <Sparkles size={16} /> : <CreditCard size={16} />}
                   >
-                    Proceed to Stripe Checkout (₹
+                    {env.demoPayments ? "Complete Demo Donation (₹" : "Proceed to Stripe Checkout (₹"}
                     {customAmountStr
                       ? Number(customAmountStr).toLocaleString('en-IN')
                       : selectedDonationAmount.toLocaleString('en-IN')})
