@@ -27,7 +27,10 @@ const isPlaceholder = (val: unknown): boolean => {
 };
 
 const isSupabaseConfigured = !isPlaceholder(rawSupabaseUrl) && !isPlaceholder(rawSupabaseAnonKey);
-const demoPayments = rawDemoPayments === 'true' || rawDemoPayments === true;
+const isStripeConfigured = !isPlaceholder(rawStripePublicKey);
+const demoPayments = rawDemoPayments === 'false'
+  ? false
+  : (rawDemoPayments === 'true' || rawDemoPayments === true || !isStripeConfigured);
 
 export const env: EnvConfig = {
   supabaseUrl: isSupabaseConfigured ? String(rawSupabaseUrl).trim() : null,
