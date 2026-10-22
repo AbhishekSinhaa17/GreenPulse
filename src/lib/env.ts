@@ -10,12 +10,14 @@ interface EnvConfig {
   stripePublicKey: string | null;
   appUrl: string;
   isSupabaseConfigured: boolean;
+  demoPayments: boolean;
 }
 
 const rawSupabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const rawSupabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const rawStripePublicKey = import.meta.env.VITE_STRIPE_PUBLIC_KEY;
 const rawAppUrl = import.meta.env.VITE_APP_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5173');
+const rawDemoPayments = import.meta.env.VITE_DEMO_PAYMENTS;
 
 // Detect if URL or Key is missing or using placeholder strings
 const isPlaceholder = (val: unknown): boolean => {
@@ -32,6 +34,7 @@ const isPlaceholder = (val: unknown): boolean => {
 };
 
 const isSupabaseConfigured = !isPlaceholder(rawSupabaseUrl) && !isPlaceholder(rawSupabaseAnonKey);
+const demoPayments = rawDemoPayments === 'true' || rawDemoPayments === true;
 
 export const env: EnvConfig = {
   supabaseUrl: isSupabaseConfigured ? String(rawSupabaseUrl).trim() : null,
@@ -39,4 +42,5 @@ export const env: EnvConfig = {
   stripePublicKey: !isPlaceholder(rawStripePublicKey) ? String(rawStripePublicKey).trim() : null,
   appUrl: rawAppUrl,
   isSupabaseConfigured,
+  demoPayments,
 };

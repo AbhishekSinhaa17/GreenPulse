@@ -10,8 +10,8 @@ export interface AuthContextValue {
   isAdmin: boolean;
   isLoading: boolean;
   isConfigured: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, fullName: string) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<UserProfile | null>;
+  signUp: (email: string, password: string, fullName: string) => Promise<UserProfile | null>;
   signInWithGoogle: (redirectTo?: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;

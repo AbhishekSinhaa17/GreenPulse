@@ -11,18 +11,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(() => Boolean(env.isSupabaseConfigured));
 
-  const fetchProfile = useCallback(async (u: User) => {
+  const fetchProfile = useCallback(async (u: User): Promise<UserProfile | null> => {
     try {
       const p = await authService.ensureUserProfile(u);
       setProfile(p);
+      return p;
     } catch (err) {
       console.error('[AuthContext] Failed to load/ensure profile:', err);
       // Fallback: try raw query
       try {
         const raw = await authService.getUserProfile(u.id);
         setProfile(raw);
+        return raw;
       } catch {
         setProfile(null);
+        return null;
       }
     }
   }, []);
@@ -69,29 +72,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [fetchProfile]);
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (email: string, password: string): Promise<UserProfile | null> => {
     setIsLoading(true);
     try {
       const { user: authedUser, session: newSession } = await authService.signIn(email, password);
       setUser(authedUser);
       setSession(newSession);
       if (authedUser) {
-        await fetchProfile(authedUser);
+        return await fetchProfile(authedUser);
       }
+      return null;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const signUp = async (email: string, password: string, fullName: string) => {
+  const signUp = async (email: string, password: string, fullName: string): Promise<UserProfile | null> => {
     setIsLoading(true);
     try {
       const { user: newUser, session: newSession } = await authService.signUp(email, password, fullName);
       setUser(newUser);
       setSession(newSession);
       if (newUser) {
-        await fetchProfile(newUser);
+        return await fetchProfile(newUser);
       }
+      return null;
     } finally {
       setIsLoading(false);
     }
@@ -119,11 +124,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const refreshProfile = async () => {
+  const refreshProfile = useCallback(async () => {
     if (user) {
+      try {
+        const raw = await authService.getUserProfile(user.id);
+        if (raw) {
+          setProfile(raw);
+          return;
+        }
+      } catch (err) {
+        console.warn('[AuthContext] Failed direct profile refresh, falling back:', err);
+      }
       await fetchProfile(user);
     }
-  };
+  }, [user, fetchProfile]);
 
   const role = profile?.role ?? null;
   const isAdmin = role === 'admin';

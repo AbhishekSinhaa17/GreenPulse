@@ -62,7 +62,7 @@ export const charityService = {
       throw new Error('Database is not connected. Credentials required.');
     }
     if (percentage < 10 || percentage > 100) {
-      throw new Error('Charity pledge must be at least 10% per PRD § 08.');
+      throw new Error('Charity pledge must be between 10% and 100%.');
     }
     const client = requireSupabase();
     const { error } = await client.from('charity_preferences').upsert({

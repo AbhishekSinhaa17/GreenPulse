@@ -14,6 +14,9 @@ import { DashboardPage } from './features/dashboard/DashboardPage';
 import { AdminPage } from './features/admin/AdminPage';
 import { AuthPage } from './features/auth/AuthPage';
 import { AuthCallbackPage } from './features/auth/AuthCallbackPage';
+import { SubscriptionPage } from './features/subscription/SubscriptionPage';
+import { CheckoutSuccessPage } from './features/subscription/CheckoutSuccessPage';
+import { CheckoutCancelPage } from './features/subscription/CheckoutCancelPage';
 
 export const App: React.FC = () => {
   return (
@@ -46,7 +49,9 @@ export const App: React.FC = () => {
                 />
                 <Route path="/login" element={<AuthPage mode="login" />} />
                 <Route path="/signup" element={<AuthPage mode="signup" />} />
-                <Route path="/subscribe" element={<AuthPage mode="subscribe" />} />
+                <Route path="/subscribe" element={<SubscriptionPage />} />
+                <Route path="/subscribe/success" element={<CheckoutSuccessPage />} />
+                <Route path="/subscribe/cancel" element={<CheckoutCancelPage />} />
                 <Route path="/auth/callback" element={<AuthCallbackPage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>

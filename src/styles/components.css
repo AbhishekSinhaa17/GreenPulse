@@ -412,10 +412,73 @@
 }
 
 @media (max-width: 840px) {
-  .desktop-nav {
+  .desktop-nav,
+  .desktop-only {
     display: none !important;
   }
   .mobile-menu-btn {
-    display: block !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+@media (min-width: 841px) {
+  .mobile-only {
+    display: none !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .container,
+  .container-narrow {
+    padding-left: var(--space-4) !important;
+    padding-right: var(--space-4) !important;
+  }
+  .section {
+    padding-top: var(--space-10) !important;
+    padding-bottom: var(--space-10) !important;
+  }
+  .section-hero {
+    padding-top: var(--space-12) !important;
+    padding-bottom: var(--space-10) !important;
+  }
+  .card {
+    padding: var(--space-4) !important;
+    border-radius: var(--radius-md) !important;
+  }
+  .dialog-content {
+    padding: var(--space-5) !important;
+    border-radius: var(--radius-lg) !important;
+  }
+  .dialog-title {
+    font-size: var(--text-xl) !important;
+  }
+  .dialog-footer {
+    flex-direction: column-reverse !important;
+    gap: var(--space-2) !important;
+  }
+  .dialog-footer button,
+  .dialog-footer a {
+    width: 100% !important;
+  }
+  .btn {
+    padding: 0.65rem 1.15rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .toast-container {
+    left: var(--space-3) !important;
+    right: var(--space-3) !important;
+    bottom: var(--space-3) !important;
+  }
+  .toast {
+    min-width: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  .brand-tagline {
+    display: none !important;
   }
 }

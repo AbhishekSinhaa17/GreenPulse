@@ -22,6 +22,12 @@ export interface UserProfile {
   updated_at: string;
 }
 
+export interface PublicProfile {
+  id: string;
+  full_name: string;
+  avatar_url?: string;
+}
+
 export interface Subscription {
   id: string;
   user_id: string;
@@ -59,8 +65,23 @@ export interface Charity {
   cover_image_url?: string;
   website_url?: string;
   is_featured: boolean;
+  is_archived?: boolean;
   total_raised_cents: number;
   created_at: string;
+}
+
+export interface PlatformAnalytics {
+  total_users: number;
+  total_subscribers: number;
+  subscription_breakdown: Record<string, number>;
+  total_draws: number;
+  total_prize_pool_cents: number;
+  total_rollovers: number;
+  total_charities: number;
+  total_donations_recorded_cents: number;
+  claims_by_status: Record<string, number>;
+  claims_by_tier: Record<string, number>;
+  timestamp: string;
 }
 
 export interface CharityEvent {

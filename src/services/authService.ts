@@ -1,5 +1,5 @@
 import { requireSupabase, env } from '../lib/supabase';
-import type { UserProfile } from '../types';
+import type { UserProfile, PublicProfile } from '../types';
 
 export const authService = {
   async signUp(email: string, password: string, fullName: string) {
@@ -89,6 +89,38 @@ export const authService = {
 
     if (error) throw error;
     return data as UserProfile | null;
+  },
+
+  /**
+   * Fetches limited public projection for a user (omits email, handicap, home_club, role).
+   * Safe for leaderboards, draw participants, and general public display.
+   */
+  async getPublicProfile(userId: string): Promise<PublicProfile | null> {
+    if (!env.isSupabaseConfigured) return null;
+    const client = requireSupabase();
+    const { data, error } = await client
+      .from('public_profiles')
+      .select('id, full_name, avatar_url')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data as PublicProfile | null;
+  },
+
+  /**
+   * Batch fetches limited public projections for multiple users.
+   */
+  async getPublicProfiles(userIds: string[]): Promise<PublicProfile[]> {
+    if (!env.isSupabaseConfigured || userIds.length === 0) return [];
+    const client = requireSupabase();
+    const { data, error } = await client
+      .from('public_profiles')
+      .select('id, full_name, avatar_url')
+      .in('id', userIds);
+
+    if (error) throw error;
+    return (data || []) as PublicProfile[];
   },
 
   async ensureUserProfile(user: { id: string; email?: string; user_metadata?: Record<string, unknown> }): Promise<UserProfile> {

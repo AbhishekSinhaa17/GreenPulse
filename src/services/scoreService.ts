@@ -39,48 +39,25 @@ export const scoreService = {
 
     const client = requireSupabase();
 
-    // 1. Try atomic PostgreSQL RPC record_golf_score
+    // Canonical atomic PostgreSQL RPC record_golf_score
     const { data: rpcData, error: rpcError } = await client.rpc('record_golf_score', {
       p_score: score,
       p_played_at: playedAt,
       p_course_name: courseName || null,
     });
 
-    if (!rpcError && rpcData?.active_scores) {
+    if (rpcError) {
+      throw new Error(`Score submission failed: ${rpcError.message}`);
+    }
+
+    if (rpcData?.active_scores) {
       return rpcData.active_scores as GolfScore[];
     }
 
-    // 2. Fallback to direct table transaction if RPC is not yet created in remote DB
-    const {
-      data: { user },
-    } = await client.auth.getUser();
-
+    const { data: { user } } = await client.auth.getUser();
     if (!user) {
-      throw new Error('Authentication required to submit scores.');
+      throw new Error('Authentication required to retrieve updated scores.');
     }
-
-    // Duplicate date check
-    const { data: existingDate } = await client
-      .from('golf_scores')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('played_at', playedAt)
-      .maybeSingle();
-
-    if (existingDate) {
-      throw new Error(`A score entry already exists for date ${playedAt}. Please edit or delete that entry.`);
-    }
-
-    const { error: insertError } = await client.from('golf_scores').insert({
-      user_id: user.id,
-      score,
-      played_at: playedAt,
-      course_name: courseName,
-    });
-
-    if (insertError) throw insertError;
-
-    // Fetch and return the active latest 5
     return this.getScores(user.id);
   },
 
