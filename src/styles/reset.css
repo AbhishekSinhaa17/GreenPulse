@@ -1,7 +1,3 @@
-/* ==========================================================================
-   Modern Reset & Base Typography
-   ========================================================================== */
-
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -29,7 +25,6 @@ body {
   width: 100%;
 }
 
-/* Typography elements */
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-editorial);
   color: var(--forest-900);

@@ -45,9 +45,9 @@ export const authService = {
     }
     const client = requireSupabase();
     const origin = typeof window !== 'undefined' ? window.location.origin : (env.appUrl || 'http://localhost:5173');
-    // Ensure redirectTo is strictly within our trusted origin
-    const targetRedirect = redirectTo && redirectTo.startsWith(origin) 
-      ? redirectTo 
+
+    const targetRedirect = redirectTo && redirectTo.startsWith(origin)
+      ? redirectTo
       : `${origin}/auth/callback`;
 
     const { data, error } = await client.auth.signInWithOAuth({
@@ -91,10 +91,6 @@ export const authService = {
     return data as UserProfile | null;
   },
 
-  /**
-   * Fetches limited public projection for a user (omits email, handicap, home_club, role).
-   * Safe for leaderboards, draw participants, and general public display.
-   */
   async getPublicProfile(userId: string): Promise<PublicProfile | null> {
     if (!env.isSupabaseConfigured) return null;
     const client = requireSupabase();
@@ -108,9 +104,6 @@ export const authService = {
     return data as PublicProfile | null;
   },
 
-  /**
-   * Batch fetches limited public projections for multiple users.
-   */
   async getPublicProfiles(userIds: string[]): Promise<PublicProfile[]> {
     if (!env.isSupabaseConfigured || userIds.length === 0) return [];
     const client = requireSupabase();
@@ -129,13 +122,11 @@ export const authService = {
     }
     const client = requireSupabase();
 
-    // 1. Try to get existing profile first
     const existing = await this.getUserProfile(user.id);
     if (existing) {
       return existing;
     }
 
-    // 2. Safe idempotent insertion if trigger has not executed yet
     const fullName = String(
       user.user_metadata?.full_name ||
       user.user_metadata?.name ||
@@ -154,7 +145,7 @@ export const authService = {
           email: user.email || '',
           full_name: fullName,
           avatar_url: avatarUrl,
-          role: 'subscriber', // STRICT: Client cannot escalate role
+          role: 'subscriber',
         },
         { onConflict: 'id', ignoreDuplicates: true }
       )
@@ -162,7 +153,7 @@ export const authService = {
       .maybeSingle();
 
     if (error) {
-      // In case another process created it concurrently, attempt fetch
+
       const refetched = await this.getUserProfile(user.id);
       if (refetched) return refetched;
       console.warn('[authService] ensureUserProfile upsert note:', error.message);
@@ -172,11 +163,9 @@ export const authService = {
       return data as UserProfile;
     }
 
-    // Fallback retrieve
     const fallback = await this.getUserProfile(user.id);
     if (fallback) return fallback;
 
-    // Return a synthesized subscriber profile if database write is pending
     return {
       id: user.id,
       email: user.email || '',
@@ -203,4 +192,3 @@ export const authService = {
     return data as UserProfile;
   },
 };
-

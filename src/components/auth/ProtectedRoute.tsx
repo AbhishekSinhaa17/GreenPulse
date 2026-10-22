@@ -22,8 +22,6 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const hasAutoRefreshed = React.useRef(false);
 
-  // Auto-refresh profile if an admin role is required but current role is not admin yet,
-  // protecting against stale sessions right after an admin promotion.
   useEffect(() => {
     let isMounted = true;
     if (isConfigured && user && requiredRole === 'admin' && role !== 'admin' && !hasAutoRefreshed.current) {
@@ -47,7 +45,6 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     }
   };
 
-  // If Supabase is unconfigured, fail closed for admin routes to prevent unauthorized access
   if (!isConfigured) {
     if (requiredRole === 'admin') {
       return (
@@ -121,12 +118,10 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
 
-  // If not logged in, redirect to login
   if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Hierarchical authorization check
   const authorized = isRoleAuthorized(role, requiredRole);
 
   if (!authorized) {

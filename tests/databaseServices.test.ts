@@ -17,7 +17,7 @@ describe('Phase 3 Database Services, Schema Invariants & Authorization', () => {
     });
 
     it('rejects fake simulated subscriptions when user has no active row', () => {
-      const userSubscriptionRow = null; // Fresh user before payment
+      const userSubscriptionRow = null;
       const resolveMembershipStatus = (sub: { status: SubscriptionStatus } | null): string => {
         if (!sub || sub.status !== 'active') {
           return 'No Active Plan';
@@ -52,11 +52,11 @@ describe('Phase 3 Database Services, Schema Invariants & Authorization', () => {
         full_name?: string;
         handicap?: number;
         home_club?: string;
-        role?: string; // Attempted malicious field
+        role?: string;
       }
 
       const sanitizeProfileUpdate = (updates: ProfileUpdatePayload): Omit<ProfileUpdatePayload, 'role'> => {
-        // Enforces client-safe pick: only full_name, handicap, home_club, avatar_url permitted
+
         const { role: _discardedRole, ...safeUpdates } = updates;
         return safeUpdates;
       };
@@ -86,15 +86,15 @@ describe('Phase 3 Database Services, Schema Invariants & Authorization', () => {
 
   describe('PRD Draw & Prize Calculations (§ 06, § 07)', () => {
     it('splits net pool strictly into 40% Tier 1, 35% Tier 2, 25% Tier 3', () => {
-      const poolCents = 2484000; // £24,840.00
+      const poolCents = 2484000;
       const tier1 = Math.round(poolCents * 0.40);
       const tier2 = Math.round(poolCents * 0.35);
       const tier3 = Math.round(poolCents * 0.25);
 
       expect(tier1 + tier2 + tier3).toBe(poolCents);
-      expect(tier1).toBe(993600); // £9,936.00
-      expect(tier2).toBe(869400); // £8,694.00
-      expect(tier3).toBe(621000); // £6,210.00
+      expect(tier1).toBe(993600);
+      expect(tier2).toBe(869400);
+      expect(tier3).toBe(621000);
     });
   });
 });

@@ -4,8 +4,7 @@ import { requireSupabase, SupabaseConfigurationError } from '../src/lib/supabase
 
 describe('Phase 2 Authentication, Configuration & Security Guards', () => {
   it('detects unconfigured or placeholder Supabase credentials correctly', () => {
-    // In our test environment, unless VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set,
-    // env.isSupabaseConfigured must be false
+
     expect(typeof env.isSupabaseConfigured).toBe('boolean');
   });
 
@@ -16,18 +15,16 @@ describe('Phase 2 Authentication, Configuration & Security Guards', () => {
   });
 
   it('enforces that public signup role cannot be overridden by user metadata', () => {
-    // Replicates handle_new_user() trigger rule:
-    // role := 'subscriber' regardless of raw_user_meta_data
+
     const simulatedSignupMeta = {
       full_name: 'Adversary User',
-      role: 'admin', // Malicious attempt to elevate role at signup
+      role: 'admin',
     };
 
-    // The trigger forces role = 'subscriber'
     const profileRow = {
       email: 'attacker@domain.com',
       full_name: simulatedSignupMeta.full_name,
-      role: 'subscriber', // Hardcoded in database trigger handle_new_user()
+      role: 'subscriber',
     };
 
     expect(profileRow.role).toBe('subscriber');
@@ -56,12 +53,12 @@ describe('Phase 2 Authentication, Configuration & Security Guards', () => {
         name: 'Jordan Spieth',
         email: 'jordan@pgatour.example',
         picture: 'https://lh3.googleusercontent.com/a/sample-avatar',
-        role: 'admin', // Tampering attempt in OAuth payload
+        role: 'admin',
       };
 
       const extractedFullName = googleUserMeta.name || 'Golfer';
       const extractedAvatar = googleUserMeta.picture || null;
-      // Invariant: OAuth signups MUST always be assigned subscriber role
+
       const assignedRole = 'subscriber';
 
       expect(extractedFullName).toBe('Jordan Spieth');
@@ -83,7 +80,7 @@ describe('Phase 2 Authentication, Configuration & Security Guards', () => {
 
       expect(resolveRedirect()).toBe('http://localhost:5173/auth/callback');
       expect(resolveRedirect('http://localhost:5173/dashboard')).toBe('http://localhost:5173/dashboard');
-      // Malicious external redirect attempt
+
       expect(resolveRedirect('https://evil-phishing.com/steal-token')).toBe('http://localhost:5173/auth/callback');
       expect(resolveRedirect('//evil.com')).toBe('http://localhost:5173/auth/callback');
     });
@@ -102,4 +99,3 @@ describe('Phase 2 Authentication, Configuration & Security Guards', () => {
     });
   });
 });
-

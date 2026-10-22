@@ -40,7 +40,6 @@ export const AdminPage: React.FC = () => {
     );
   };
 
-  // Master Data State
   const [usersList, setUsersList] = useState<UserProfile[]>([]);
   const [claimsList, setClaimsList] = useState<WinnerClaim[]>([]);
   const [publishedDraws, setPublishedDraws] = useState<MonthlyDraw[]>([]);
@@ -112,7 +111,7 @@ export const AdminPage: React.FC = () => {
 
   return (
     <PageContainer>
-      {/* 0. Admin Operations Header & Tab Strip */}
+
       <AdminHeader
         activeTab={activeTab}
         onSelectTab={handleSelectTab}
@@ -124,7 +123,6 @@ export const AdminPage: React.FC = () => {
         charitiesCount={charitiesList.length}
       />
 
-      {/* 1. Surface 02: Draw Simulation & Orchestration */}
       {activeTab === 'draw' && (
         <DrawSection
           eligibleSubscribers={eligibleSubscribers}
@@ -136,7 +134,6 @@ export const AdminPage: React.FC = () => {
         />
       )}
 
-      {/* 2. Surface 04: Winners Verification Queue */}
       {activeTab === 'winners' && (
         <WinnersSection
           claimsList={claimsList}
@@ -147,7 +144,6 @@ export const AdminPage: React.FC = () => {
         />
       )}
 
-      {/* 3. Surface 01: User & Subscription Registry */}
       {activeTab === 'users' && (
         <UsersSection
           usersList={usersList}
@@ -156,7 +152,6 @@ export const AdminPage: React.FC = () => {
         />
       )}
 
-      {/* 4. Surface 03: Charity Partner Management */}
       {activeTab === 'charities' && (
         <CharitiesSection
           charitiesList={charitiesList}
@@ -165,7 +160,6 @@ export const AdminPage: React.FC = () => {
         />
       )}
 
-      {/* 5. Surface 05: Reports & Platform Analytics */}
       {activeTab === 'analytics' && (
         <AnalyticsSection
           analyticsData={analyticsData}

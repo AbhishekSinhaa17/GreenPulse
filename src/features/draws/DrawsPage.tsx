@@ -21,10 +21,6 @@ import { drawService } from "../../services/drawService";
 import { useAuth } from "../../hooks/useAuth";
 import type { MonthlyDraw } from "../../types";
 
-/* -------------------------------------------------------------------------- */
-/*  Animated Counter                                                          */
-/* -------------------------------------------------------------------------- */
-
 const AnimatedCounter: React.FC<{
   value: number;
   prefix?: string;
@@ -57,10 +53,6 @@ const AnimatedCounter: React.FC<{
     </span>
   );
 };
-
-/* -------------------------------------------------------------------------- */
-/*  Animation Variants                                                        */
-/* -------------------------------------------------------------------------- */
 
 const fadeUp: Variants = {
   hidden: { opacity: 0, y: 20 },
@@ -174,7 +166,6 @@ export const DrawsPage: React.FC = () => {
         </p>
       </motion.div>
 
-      {/* Main Prize Pool Card */}
       <motion.div
         initial="hidden"
         whileInView="visible"
@@ -191,7 +182,7 @@ export const DrawsPage: React.FC = () => {
             overflow: "hidden",
           }}
         >
-          {/* Ambient glow if jackpot is rolling over */}
+
           {isRolledOver && (
             <motion.div
               aria-hidden
@@ -308,7 +299,6 @@ export const DrawsPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Tier Pot Allocations */}
           <motion.div
             variants={staggerContainer}
             initial="hidden"
@@ -388,7 +378,6 @@ export const DrawsPage: React.FC = () => {
                   <AnimatedCounter value={tier.amount} prefix="₹" />
                 </div>
 
-                {/* Relative share bar */}
                 <div
                   style={{
                     width: "100%",
@@ -424,7 +413,6 @@ export const DrawsPage: React.FC = () => {
         </Card>
       </motion.div>
 
-      {/* Latest Published Draw Result Showcase */}
       <motion.div
         initial="hidden"
         whileInView="visible"
@@ -549,7 +537,6 @@ export const DrawsPage: React.FC = () => {
         </Card>
       </motion.div>
 
-      {/* Past Published Draws History Archive */}
       {pastDraws.length > 0 && (
         <motion.div
           initial="hidden"
@@ -644,7 +631,6 @@ export const DrawsPage: React.FC = () => {
         </motion.div>
       )}
 
-      {/* Loading state */}
       <AnimatePresence>
         {isLoading && (
           <motion.div

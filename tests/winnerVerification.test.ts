@@ -12,21 +12,21 @@ describe('PRD § 09 & Phase 6: Proof File Validation', () => {
     const validJpg = {
       name: 'scorecard.jpg',
       type: 'image/jpeg',
-      size: 1024 * 500, // 500 KB
+      size: 1024 * 500,
     };
     expect(validateProofFile(validJpg).valid).toBe(true);
 
     const validPng = {
       name: 'golf-genius-proof.png',
       type: 'image/png',
-      size: 1024 * 1024 * 2, // 2 MB
+      size: 1024 * 1024 * 2,
     };
     expect(validateProofFile(validPng).valid).toBe(true);
 
     const validWebp = {
       name: 'round_screen.webp',
       type: 'image/webp',
-      size: 1024 * 1024 * 4.9, // 4.9 MB
+      size: 1024 * 1024 * 4.9,
     };
     expect(validateProofFile(validWebp).valid).toBe(true);
   });
@@ -35,7 +35,7 @@ describe('PRD § 09 & Phase 6: Proof File Validation', () => {
     const oversizedFile = {
       name: 'huge_scorecard.png',
       type: 'image/png',
-      size: MAX_PROOF_FILE_SIZE_BYTES + 1024, // 5MB + 1KB
+      size: MAX_PROOF_FILE_SIZE_BYTES + 1024,
     };
     const result = validateProofFile(oversizedFile);
     expect(result.valid).toBe(false);
@@ -80,7 +80,7 @@ describe('PRD § 09 & Phase 6: Proof File Validation', () => {
   it('rejects files with mismatched or unauthorized file extensions', () => {
     const spoofedFile = {
       name: 'trojan.exe',
-      type: 'image/png', // Spoofed MIME
+      type: 'image/png',
       size: 1024 * 10,
     };
     const result = validateProofFile(spoofedFile);
@@ -106,7 +106,7 @@ describe('PRD § 09 & Phase 6: Secure Non-Guessable Storage Path Generation', ()
 
     const path = generateSecureProofPath(maliciousUserId, maliciousClaimId, filename, () => 'safe-uuid');
     expect(path).not.toContain('..');
-    // Ensure only the single folder delimiter separates userId and claim
+
     const parts = path.split('/');
     expect(parts).toHaveLength(2);
     expect(path).toBe('malicioususer/claimsubfolder-safe-uuid.jpeg');
@@ -143,12 +143,11 @@ describe('PRD § 09 & § 11.4: Review Decision Validation', () => {
 
 describe('PRD § 09: Claim Lifecycle State Machine & Payment Boundary', () => {
   it('restricts non-admin users to only moving pending_proof or rejected to under_review', () => {
-    // Non-admin can submit proof for pending_proof
+
     expect(canTransitionClaimStatus('pending_proof', 'under_review', false)).toBe(true);
-    // Non-admin can re-submit proof for rejected
+
     expect(canTransitionClaimStatus('rejected', 'under_review', false)).toBe(true);
 
-    // Non-admin CANNOT self-verify or mark paid
     expect(canTransitionClaimStatus('pending_proof', 'verified', false)).toBe(false);
     expect(canTransitionClaimStatus('under_review', 'verified', false)).toBe(false);
     expect(canTransitionClaimStatus('under_review', 'paid', false)).toBe(false);
@@ -156,19 +155,18 @@ describe('PRD § 09: Claim Lifecycle State Machine & Payment Boundary', () => {
   });
 
   it('allows administrators to review, approve, and reject claims', () => {
-    // Admin review flows
+
     expect(canTransitionClaimStatus('pending_proof', 'under_review', true)).toBe(true);
     expect(canTransitionClaimStatus('under_review', 'verified', true)).toBe(true);
     expect(canTransitionClaimStatus('under_review', 'rejected', true)).toBe(true);
     expect(canTransitionClaimStatus('rejected', 'under_review', true)).toBe(true);
 
-    // Terminal state protection: cannot transition from paid
     expect(canTransitionClaimStatus('paid', 'verified', true)).toBe(false);
     expect(canTransitionClaimStatus('paid', 'under_review', true)).toBe(false);
   });
 
   it('enforces that verification does not automatically mark claim paid', () => {
-    // When a claim is verified, its status remains 'verified' until an independent payout process occurs
+
     const verifiedStatus = 'verified';
     expect(verifiedStatus).not.toBe('paid');
   });

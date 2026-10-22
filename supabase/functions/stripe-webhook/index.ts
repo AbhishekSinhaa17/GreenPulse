@@ -1,7 +1,3 @@
-// GreenPulse — Stripe Webhook Handler (Supabase Edge Function / Deno Runtime)
-// Source of Truth: PRD § 01, § 04, § 08, § 16
-// Handles raw signature verification, retryable event idempotency, subscription status, and donation ledger entries.
-
 import Stripe from 'npm:stripe@^17.0.0';
 import { createClient } from 'npm:@supabase/supabase-js@^2.39.0';
 
@@ -37,10 +33,8 @@ Deno.serve(async (req: Request) => {
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
   const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
-  // 1. Read Raw Body
   const rawBody = await req.text();
 
-  // 2. Cryptographic Signature Verification
   let event: Stripe.Event;
   try {
     if (!signature) {
@@ -56,7 +50,6 @@ Deno.serve(async (req: Request) => {
     );
   }
 
-  // 3. Robust Retryable Idempotency Check via stripe_webhook_events
   const { data: existingEvent, error: checkErr } = await supabaseAdmin
     .from('stripe_webhook_events')
     .select('id, status, processed_at, created_at')
@@ -67,7 +60,6 @@ Deno.serve(async (req: Request) => {
     console.error('[stripe-webhook] Error querying idempotency ledger:', checkErr);
   }
 
-  // If already successfully completed, skip side effects safely
   if (existingEvent && existingEvent.status === 'completed') {
     console.log(`[stripe-webhook] Event ${event.id} already completed at ${existingEvent.processed_at}. Skipping duplicate.`);
     return new Response(
@@ -76,7 +68,6 @@ Deno.serve(async (req: Request) => {
     );
   }
 
-  // If currently processing by a concurrent worker within the last 60s, acknowledge to prevent race conditions
   if (existingEvent && existingEvent.status === 'processing') {
     const createdAtTime = new Date(existingEvent.created_at || existingEvent.processed_at || Date.now()).getTime();
     if (Date.now() - createdAtTime < 60000) {
@@ -88,7 +79,6 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  // Record event in idempotency table with 'processing' state before executing side-effects
   const { error: recordEventErr } = await supabaseAdmin
     .from('stripe_webhook_events')
     .upsert({
@@ -108,9 +98,7 @@ Deno.serve(async (req: Request) => {
 
   try {
     switch (event.type) {
-      // =======================================================================
-      // A. CHECKOUT SESSION COMPLETED (Initial Subscription or Direct Donation)
-      // =======================================================================
+
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
 
@@ -125,10 +113,8 @@ Deno.serve(async (req: Request) => {
             break;
           }
 
-          // Check payment status: only activate if payment is confirmed paid
           const initialStatus = session.payment_status === 'unpaid' ? 'incomplete' : 'active';
 
-          // Fetch full subscription dates from Stripe
           let currentPeriodStart = new Date().toISOString();
           let currentPeriodEnd = new Date(Date.now() + (planTier === 'yearly' ? 365 : 30) * 86400000).toISOString();
 
@@ -142,7 +128,6 @@ Deno.serve(async (req: Request) => {
             }
           }
 
-          // 1. Upsert Subscription in database
           const { error: subUpsertErr } = await supabaseAdmin.from('subscriptions').upsert(
             {
               user_id: userId,
@@ -162,7 +147,6 @@ Deno.serve(async (req: Request) => {
             throw new Error(`Failed to update subscriptions table: ${subUpsertErr.message}`);
           }
 
-          // 2. Upsert Charity Preference
           if (charityId) {
             const { error: prefErr } = await supabaseAdmin.from('charity_preferences').upsert(
               {
@@ -178,8 +162,6 @@ Deno.serve(async (req: Request) => {
               console.error('[stripe-webhook] Error saving charity preference:', prefErr);
             }
 
-            // 3. Record Initial Subscription Charity Allocation in donation_ledger
-            // Full Subscription Fee: ₹2,090 monthly (209,000 paise) / ₹20,900 yearly (2,090,000 paise)
             const baseAmountCents = planTier === 'yearly' ? 2090000 : 209000;
             const donationCents = Math.round(baseAmountCents * (charityPercentage / 100));
 
@@ -198,7 +180,7 @@ Deno.serve(async (req: Request) => {
             }
           }
         } else if (session.mode === 'payment' && session.metadata?.type === 'independent_direct_donation') {
-          // Direct Standalone Charity Donation
+
           const charityId = session.metadata.charity_id;
           const donorUserId = session.metadata.user_id || null;
           const donationAmountCents = Number(session.metadata.amount_cents || session.amount_total || 0);
@@ -222,9 +204,6 @@ Deno.serve(async (req: Request) => {
         break;
       }
 
-      // =======================================================================
-      // B. SUBSCRIPTION LIFECYCLE: UPDATED / CREATED
-      // =======================================================================
       case 'customer.subscription.created':
       case 'customer.subscription.updated': {
         const sub = event.data.object as Stripe.Subscription;
@@ -254,9 +233,6 @@ Deno.serve(async (req: Request) => {
         break;
       }
 
-      // =======================================================================
-      // C. SUBSCRIPTION LIFECYCLE: DELETED (CANCELED)
-      // =======================================================================
       case 'customer.subscription.deleted': {
         const sub = event.data.object as Stripe.Subscription;
         const { error: delErr } = await supabaseAdmin
@@ -274,9 +250,6 @@ Deno.serve(async (req: Request) => {
         break;
       }
 
-      // =======================================================================
-      // D. INVOICE PAID (Recurring Membership Renewal)
-      // =======================================================================
       case 'invoice.paid': {
         const invoice = event.data.object as Stripe.Invoice;
         if (invoice.subscription && invoice.billing_reason === 'subscription_cycle') {
@@ -293,13 +266,12 @@ Deno.serve(async (req: Request) => {
           }
 
           if (subRow) {
-            // Re-activate if lapsed
+
             await supabaseAdmin
               .from('subscriptions')
               .update({ status: 'active', updated_at: new Date().toISOString() })
               .eq('stripe_subscription_id', stripeSubId);
 
-            // Look up user's designated charity
             const { data: pref } = await supabaseAdmin
               .from('charity_preferences')
               .select('charity_id, percentage')
@@ -307,11 +279,10 @@ Deno.serve(async (req: Request) => {
               .maybeSingle();
 
             if (pref) {
-              // Full fee base: ₹20,900 yearly (2,090,000 paise) / ₹2,090 monthly (209,000 paise)
+
               const baseCents = subRow.plan_tier === 'yearly' ? 2090000 : 209000;
               const renewalDonationCents = Math.round(baseCents * (pref.percentage / 100));
 
-              // Record renewal donation split with database-enforced stripe_invoice_id idempotency
               const { error: renewalErr } = await supabaseAdmin.rpc('record_donation_and_increment', {
                 p_charity_id: pref.charity_id,
                 p_user_id: subRow.user_id,
@@ -331,9 +302,6 @@ Deno.serve(async (req: Request) => {
         break;
       }
 
-      // =======================================================================
-      // E. INVOICE PAYMENT FAILED
-      // =======================================================================
       case 'invoice.payment_failed': {
         const invoice = event.data.object as Stripe.Invoice;
         if (invoice.subscription) {
@@ -354,7 +322,6 @@ Deno.serve(async (req: Request) => {
         console.log(`[stripe-webhook] Unhandled event type: ${event.type}`);
     }
 
-    // Mark event as successfully completed in idempotency table ONLY AFTER side effects succeed
     await supabaseAdmin
       .from('stripe_webhook_events')
       .update({
@@ -372,7 +339,6 @@ Deno.serve(async (req: Request) => {
     const errorMsg = err instanceof Error ? err.message : 'Unknown internal processing error';
     console.error(`[stripe-webhook] Error processing event ${event.id}:`, errorMsg);
 
-    // Record failure in idempotency table so it can be retried safely
     await supabaseAdmin
       .from('stripe_webhook_events')
       .update({

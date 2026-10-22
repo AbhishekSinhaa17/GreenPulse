@@ -1,4 +1,3 @@
-
 CREATE OR REPLACE FUNCTION public.validate_winning_numbers(p_numbers INTEGER[])
 RETURNS BOOLEAN AS $$
 DECLARE
@@ -14,7 +13,7 @@ BEGIN
       RETURN FALSE;
     END IF;
     IF v_num = ANY(v_seen) THEN
-      RETURN FALSE; -- Duplicates not allowed
+      RETURN FALSE;
     END IF;
     v_seen := array_append(v_seen, v_num);
   END LOOP;
@@ -23,7 +22,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
 
--- 2. Server-side atomic draw publishing procedure (Admin only)
 CREATE OR REPLACE FUNCTION public.publish_monthly_draw(
   p_draw_month DATE,
   p_draw_title TEXT,
@@ -54,24 +52,21 @@ DECLARE
   v_prize_cents BIGINT;
   v_entry_id UUID;
 BEGIN
-  -- 1. Verify caller is platform administrator
+
   IF NOT public.is_admin() THEN
     RAISE EXCEPTION 'Unauthorized: Only platform administrators can publish official monthly draws.';
   END IF;
 
   v_admin_id := auth.uid();
 
-  -- 2. Validate draw logic
   IF p_draw_logic NOT IN ('random', 'algorithmic') THEN
     RAISE EXCEPTION 'Invalid draw logic: %. Expected "random" or "algorithmic".', p_draw_logic;
   END IF;
 
-  -- 3. Validate winning numbers
   IF NOT public.validate_winning_numbers(p_winning_numbers) THEN
     RAISE EXCEPTION 'Invalid winning numbers: Must provide exactly 5 unique integers between 1 and 45.';
   END IF;
 
-  -- 4. Verify no published draw already exists for this month (idempotency)
   IF EXISTS (
     SELECT 1 FROM public.draws
     WHERE draw_month = p_draw_month AND status = 'published'
@@ -79,14 +74,11 @@ BEGIN
     RAISE EXCEPTION 'Draw for month % has already been published. Published draws cannot be overwritten.', p_draw_month;
   END IF;
 
-  -- 5. Calculate pots according to PRD § 07 (40% / 35% / 25%)
   v_tier5_base := FLOOR(p_total_prize_pool_cents * 0.40);
   v_tier4_pot := FLOOR(p_total_prize_pool_cents * 0.35);
   v_tier3_pot := p_total_prize_pool_cents - v_tier5_base - v_tier4_pot;
   v_tier5_pot := v_tier5_base + COALESCE(p_carried_over_jackpot_cents, 0);
 
-  -- 6. Collect active subscribers with their distinct latest scores
-  -- A temporary table or CTE to count tier matches
   CREATE TEMP TABLE temp_subscriber_tickets ON COMMIT DROP AS
   WITH latest_scores AS (
     SELECT
@@ -109,12 +101,11 @@ BEGIN
   FROM public.profiles p
   INNER JOIN distinct_active_scores das ON das.user_id = p.id
   LEFT JOIN public.subscriptions s ON s.user_id = p.id
-  -- Eligible if subscription is active or user has entered scores
+
   WHERE (s.status = 'active' OR s.id IS NULL);
 
   SELECT COUNT(*) INTO v_total_eligible FROM temp_subscriber_tickets;
 
-  -- 7. Count match tiers across tickets
   CREATE TEMP TABLE temp_ticket_evaluations ON COMMIT DROP AS
   SELECT
     t.user_id,
@@ -135,7 +126,6 @@ BEGIN
 
   v_jackpot_rolled_over := (v_tier5_winners = 0);
 
-  -- Calculate individual payouts
   IF v_tier5_winners > 0 THEN
     v_tier5_payout := FLOOR(v_tier5_pot / v_tier5_winners);
   END IF;
@@ -148,7 +138,6 @@ BEGIN
     v_tier3_payout := FLOOR(v_tier3_pot / v_tier3_winners);
   END IF;
 
-  -- 8. Insert or update the official draw record
   INSERT INTO public.draws (
     draw_title,
     draw_month,
@@ -205,7 +194,6 @@ BEGIN
     published_by = EXCLUDED.published_by
   RETURNING id INTO v_draw_id;
 
-  -- 9. Insert draw entries and winner claims
   FOR v_entry IN SELECT * FROM temp_ticket_evaluations LOOP
     v_matched_count := v_entry.matched_count;
     v_match_tier := 'none';
@@ -222,7 +210,6 @@ BEGIN
       v_prize_cents := v_tier3_payout;
     END IF;
 
-    -- Upsert draw entry
     INSERT INTO public.draw_entries (
       draw_id,
       user_id,
@@ -245,7 +232,6 @@ BEGIN
       prize_awarded_cents = EXCLUDED.prize_awarded_cents
     RETURNING id INTO v_entry_id;
 
-    -- If this is a winning ticket, create a pending winner claim
     IF v_match_tier IN ('tier_5', 'tier_4', 'tier_3') THEN
       INSERT INTO public.winner_claims (
         draw_id,
@@ -266,7 +252,6 @@ BEGIN
     END IF;
   END LOOP;
 
-  -- 10. Return full publication summary
   RETURN jsonb_build_object(
     'success', true,
     'draw_id', v_draw_id,

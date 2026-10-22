@@ -1,4 +1,3 @@
-
 ALTER TABLE public.charities
 ADD COLUMN IF NOT EXISTS is_archived BOOLEAN NOT NULL DEFAULT FALSE;
 
@@ -38,7 +37,7 @@ BEGIN
       'message', format('Charity "%s" has existing subscriber pledges or donation records and was safely archived instead of deleted.', v_charity_name)
     );
   ELSE
-    -- Safe to permanently delete (also cleans up events via CASCADE)
+
     DELETE FROM public.charities WHERE id = p_charity_id;
 
     RETURN jsonb_build_object(
@@ -50,7 +49,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
--- 3. Admin Profile Update RPC with Self-Demotion Protection (PRD § 11.1)
 CREATE OR REPLACE FUNCTION public.admin_update_profile(
   p_user_id UUID,
   p_full_name TEXT DEFAULT NULL,
@@ -69,7 +67,6 @@ BEGIN
 
   v_admin_id := auth.uid();
 
-  -- Prevent self-demotion
   IF p_user_id = v_admin_id AND p_role IS NOT NULL AND p_role <> 'admin' THEN
     RAISE EXCEPTION 'Action Prohibited: You cannot remove your own administrator privileges.';
   END IF;
@@ -99,7 +96,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
--- 4. Platform Analytics Aggregation RPC (PRD § 11.5)
 CREATE OR REPLACE FUNCTION public.get_platform_analytics()
 RETURNS JSONB AS $$
 DECLARE
@@ -121,7 +117,6 @@ BEGIN
   SELECT COUNT(*) INTO v_total_users FROM public.profiles;
   SELECT COUNT(*) INTO v_total_subscribers FROM public.subscriptions WHERE status = 'active';
 
-  -- Subscription status breakdown
   SELECT jsonb_object_agg(status, cnt) INTO v_sub_breakdown
   FROM (
     SELECT status, COUNT(*) as cnt
@@ -129,7 +124,6 @@ BEGIN
     GROUP BY status
   ) s;
 
-  -- Draws stats
   SELECT
     COALESCE(COUNT(*), 0),
     COALESCE(SUM(total_prize_pool_cents), 0),
@@ -138,11 +132,9 @@ BEGIN
   FROM public.draws
   WHERE status = 'published';
 
-  -- Charities stats
   SELECT COUNT(*) INTO v_total_charities FROM public.charities WHERE is_archived = FALSE;
   SELECT COALESCE(SUM(amount_cents), 0) INTO v_total_donations FROM public.donation_ledger;
 
-  -- Claims breakdown
   SELECT jsonb_object_agg(status, cnt) INTO v_claims_status
   FROM (
     SELECT status, COUNT(*) as cnt

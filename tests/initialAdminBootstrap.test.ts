@@ -1,9 +1,5 @@
 import { describe, it, expect } from 'vitest';
 
-/**
- * Pure simulation of the PostgreSQL trigger and bootstrap logic in
- * supabase/migrations/20261021000006_initial_admin_bootstrap.sql
- */
 interface SimulatedProfile {
   id: string;
   email: string;
@@ -28,9 +24,6 @@ class BootstrapSimulator {
     return [...this.profiles];
   }
 
-  /**
-   * Simulates trigger public.prevent_unauthorized_role_change()
-   */
   private checkRoleChangeTrigger(
     currentUser: string,
     callerIsAdmin: boolean,
@@ -39,17 +32,15 @@ class BootstrapSimulator {
     newRole: string
   ): void {
     if (oldRole !== newRole) {
-      // A. Allow if caller is an existing verified admin
+
       if (callerIsAdmin) {
         return;
       }
 
-      // B. Allow if trusted bootstrap session flag is active
       if (bootstrapFlagActive) {
         return;
       }
 
-      // C. Allow database owner (postgres / supabase_admin) ONLY if NO admin exists
       const adminCount = this.profiles.filter((p) => p.role === 'admin').length;
       if (['postgres', 'supabase_admin'].includes(currentUser) && adminCount === 0) {
         return;
@@ -59,9 +50,6 @@ class BootstrapSimulator {
     }
   }
 
-  /**
-   * Simulates public.bootstrap_initial_admin(p_identifier)
-   */
   bootstrapInitialAdmin(identifier: string, callerRole: string): {
     success: boolean;
     status: 'promoted' | 'already_admin';
@@ -69,7 +57,7 @@ class BootstrapSimulator {
     email: string;
     message: string;
   } {
-    // 1. Enforce privilege restriction: anon & authenticated cannot execute
+
     if (['anon', 'authenticated'].includes(callerRole)) {
       throw new Error('42501: permission denied for function bootstrap_initial_admin');
     }
@@ -79,10 +67,8 @@ class BootstrapSimulator {
       throw new Error('Invalid identifier: Must provide a valid user email address or user UUID.');
     }
 
-    // 2. Check existing admin
     const existingAdmin = this.profiles.find((p) => p.role === 'admin');
 
-    // 3. Locate target user in auth.users
     const targetUser = this.authUsers.find(
       (u) => u.id === cleanId || u.email.toLowerCase() === cleanId.toLowerCase()
     );
@@ -93,7 +79,6 @@ class BootstrapSimulator {
       );
     }
 
-    // 4. Enforce one-time constraint
     if (existingAdmin) {
       if (existingAdmin.id === targetUser.id) {
         return {
@@ -110,14 +95,12 @@ class BootstrapSimulator {
       }
     }
 
-    // 5. Ensure profile exists
     let profile = this.profiles.find((p) => p.id === targetUser.id);
     if (!profile) {
       profile = { id: targetUser.id, email: targetUser.email, role: 'subscriber' };
       this.profiles.push(profile);
     }
 
-    // 6. Set bootstrap flag and execute role update through trigger
     const oldRole = profile.role;
     const newRole = 'admin';
     this.checkRoleChangeTrigger('postgres', false, true, oldRole, newRole);
@@ -133,10 +116,6 @@ class BootstrapSimulator {
     };
   }
 
-  /**
-   * Simulates direct SQL update in SQL Editor:
-   * UPDATE public.profiles SET role = 'admin' WHERE email = ...;
-   */
   directSqlUpdateRole(currentUser: string, targetEmail: string, newRole: 'subscriber' | 'admin'): void {
     const profile = this.profiles.find((p) => p.email.toLowerCase() === targetEmail.toLowerCase());
     if (!profile) throw new Error('Profile not found.');
@@ -169,11 +148,9 @@ describe('Initial Admin Bootstrap Security & Idempotency (Migration 202610210000
       { id: 'uuid-owner-1', email: 'owner@greenpulse.golf' },
     ]);
 
-    // First execution
     const r1 = sim.bootstrapInitialAdmin('owner@greenpulse.golf', 'postgres');
     expect(r1.status).toBe('promoted');
 
-    // Second execution (same user)
     const r2 = sim.bootstrapInitialAdmin('owner@greenpulse.golf', 'postgres');
     expect(r2.success).toBe(true);
     expect(r2.status).toBe('already_admin');
@@ -186,15 +163,12 @@ describe('Initial Admin Bootstrap Security & Idempotency (Migration 202610210000
       { id: 'uuid-intruder-2', email: 'intruder@domain.com' },
     ]);
 
-    // Promote first admin
     sim.bootstrapInitialAdmin('owner@greenpulse.golf', 'postgres');
 
-    // Attempt to promote second user via bootstrap
     expect(() => {
       sim.bootstrapInitialAdmin('intruder@domain.com', 'postgres');
     }).toThrow(/Bootstrap Prohibited: An administrator \(owner@greenpulse.golf\) already exists/);
 
-    // Verify intruder remains subscriber
     const profiles = sim.getProfiles();
     expect(profiles.find((p) => p.email === 'intruder@domain.com')?.role).toBeUndefined();
   });
@@ -214,12 +188,10 @@ describe('Initial Admin Bootstrap Security & Idempotency (Migration 202610210000
       { id: 'uuid-owner-1', email: 'owner@greenpulse.golf' },
     ]);
 
-    // Regular authenticated user attempting to invoke RPC via PostgREST
     expect(() => {
       sim.bootstrapInitialAdmin('owner@greenpulse.golf', 'authenticated');
     }).toThrow(/permission denied for function bootstrap_initial_admin/);
 
-    // Anonymous visitor attempting to invoke RPC
     expect(() => {
       sim.bootstrapInitialAdmin('owner@greenpulse.golf', 'anon');
     }).toThrow(/permission denied for function bootstrap_initial_admin/);
@@ -231,17 +203,14 @@ describe('Initial Admin Bootstrap Security & Idempotency (Migration 202610210000
       [{ id: 'uuid-owner-1', email: 'owner@greenpulse.golf', role: 'subscriber' }]
     );
 
-    // 1. Direct update in SQL Editor when zero admins exist succeeds
     expect(() => {
       sim.directSqlUpdateRole('postgres', 'owner@greenpulse.golf', 'admin');
     }).not.toThrow();
 
     expect(sim.getProfiles()[0].role).toBe('admin');
 
-    // 2. Add second user
-    sim.directSqlUpdateRole('postgres', 'owner@greenpulse.golf', 'admin'); // idempotent
+    sim.directSqlUpdateRole('postgres', 'owner@greenpulse.golf', 'admin');
 
-    // 3. Regular non-postgres user cannot update role
     expect(() => {
       sim.directSqlUpdateRole('authenticator', 'owner@greenpulse.golf', 'subscriber');
     }).toThrow(/Unauthorized: Only administrators can modify user roles/);
@@ -253,7 +222,6 @@ describe('Initial Admin Bootstrap Security & Idempotency (Migration 202610210000
       [{ id: 'uuid-normal-1', email: 'golfer@greenpulse.golf', role: 'subscriber' }]
     );
 
-    // Client user trying to update their own role directly
     expect(() => {
       sim.directSqlUpdateRole('authenticator', 'golfer@greenpulse.golf', 'admin');
     }).toThrow(/Unauthorized: Only administrators can modify user roles/);

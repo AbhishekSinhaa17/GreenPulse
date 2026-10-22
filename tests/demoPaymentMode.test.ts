@@ -18,9 +18,6 @@ describe('Demo Payment Mode — Unit & Integration Test Suite', () => {
     };
   });
 
-  /**
-   * Simulates the PostgreSQL stored procedure public.activate_demo_subscription
-   */
   function simulateActivateDemoSubscriptionRpc(params: {
     callerUid: string | null;
     demoPaymentsEnabled: boolean;
@@ -30,38 +27,32 @@ describe('Demo Payment Mode — Unit & Integration Test Suite', () => {
   }): { success: boolean; duplicate: boolean; subscription: Subscription } {
     const { callerUid, demoPaymentsEnabled, planTier, charityId, charityPercentage = 10 } = params;
 
-    // 1. Explicit feature flag guard
     if (!demoPaymentsEnabled) {
       throw new Error('Demo payments are disabled. Real payment verification required.');
     }
 
-    // 2. Strict authentication guard (scoped strictly to auth.uid())
     if (!callerUid) {
       throw new Error('Authentication required: You must be logged in to activate a demo subscription.');
     }
 
-    // 3. Plan tier validation
     if (!['monthly', 'yearly'].includes(planTier)) {
       throw new Error('Invalid plan tier: Expected "monthly" or "yearly".');
     }
 
-    // 4. Charity percentage validation
     if (charityPercentage < 10 || charityPercentage > 50) {
       throw new Error('Invalid charity percentage: Must be between 10% and 50%.');
     }
 
-    // 5. Update charity preference if provided
     if (charityId) {
       db.charityPreferences.set(callerUid, { charityId, percentage: charityPercentage });
     }
 
-    // 6. Idempotency Check on subscriptions
     const existing = db.subscriptions.get(callerUid);
     const now = new Date();
     const periodEnd = new Date(now.getTime() + (planTier === 'yearly' ? 365 : 30) * 86400000);
 
     if (existing && existing.status === 'active' && existing.plan_tier === planTier) {
-      // Idempotent return without duplicate subscription creation
+
       return {
         success: true,
         duplicate: true,
@@ -77,7 +68,7 @@ describe('Demo Payment Mode — Unit & Integration Test Suite', () => {
       current_period_start: now.toISOString(),
       current_period_end: periodEnd.toISOString(),
       cancel_at_period_end: false,
-      stripe_customer_id: undefined, // Legitimate undefined / null (no fake Stripe IDs)
+      stripe_customer_id: undefined,
       stripe_subscription_id: undefined,
       created_at: existing ? existing.created_at : now.toISOString(),
       updated_at: now.toISOString(),
@@ -92,9 +83,6 @@ describe('Demo Payment Mode — Unit & Integration Test Suite', () => {
     };
   }
 
-  // ===========================================================================
-  // 1. Successful Activation
-  // ===========================================================================
   it('successfully activates a monthly demo subscription for the authenticated user', () => {
     const result = simulateActivateDemoSubscriptionRpc({
       callerUid: 'usr-alice-123',
@@ -110,17 +98,14 @@ describe('Demo Payment Mode — Unit & Integration Test Suite', () => {
     expect(result.subscription.plan_tier).toBe('monthly');
     expect(result.subscription.user_id).toBe('usr-alice-123');
 
-    // Asserts no fake Stripe IDs are generated
     expect(result.subscription.stripe_customer_id).toBeUndefined();
     expect(result.subscription.stripe_subscription_id).toBeUndefined();
 
-    // Verifies charity preference was stored
     expect(db.charityPreferences.get('usr-alice-123')).toEqual({
       charityId: 'charity-green-earth',
       percentage: 15,
     });
 
-    // Verifies donation ledger was NOT polluted with fake Stripe charges
     expect(db.donationLedger).toHaveLength(0);
   });
 
@@ -140,11 +125,8 @@ describe('Demo Payment Mode — Unit & Integration Test Suite', () => {
     expect(daysDiff).toBe(365);
   });
 
-  // ===========================================================================
-  // 2. Repeated Clicks & Idempotency
-  // ===========================================================================
   it('is completely idempotent when repeatedly activated, preventing duplicate subscriptions', () => {
-    // First click
+
     const res1 = simulateActivateDemoSubscriptionRpc({
       callerUid: 'usr-charlie-789',
       demoPaymentsEnabled: true,
@@ -153,7 +135,6 @@ describe('Demo Payment Mode — Unit & Integration Test Suite', () => {
     expect(res1.duplicate).toBe(false);
     expect(db.subscriptions.size).toBe(1);
 
-    // Second click (duplicate invocation)
     const res2 = simulateActivateDemoSubscriptionRpc({
       callerUid: 'usr-charlie-789',
       demoPaymentsEnabled: true,
@@ -162,7 +143,6 @@ describe('Demo Payment Mode — Unit & Integration Test Suite', () => {
     expect(res2.duplicate).toBe(true);
     expect(res2.subscription.id).toBe(res1.subscription.id);
 
-    // Third click
     const res3 = simulateActivateDemoSubscriptionRpc({
       callerUid: 'usr-charlie-789',
       demoPaymentsEnabled: true,
@@ -170,13 +150,9 @@ describe('Demo Payment Mode — Unit & Integration Test Suite', () => {
     });
     expect(res3.duplicate).toBe(true);
 
-    // Database still has exactly 1 subscription
     expect(db.subscriptions.size).toBe(1);
   });
 
-  // ===========================================================================
-  // 3. Unauthenticated User Rejection
-  // ===========================================================================
   it('rejects activation when caller is unauthenticated (callerUid is null)', () => {
     expect(() =>
       simulateActivateDemoSubscriptionRpc({
@@ -189,14 +165,11 @@ describe('Demo Payment Mode — Unit & Integration Test Suite', () => {
     expect(db.subscriptions.size).toBe(0);
   });
 
-  // ===========================================================================
-  // 4. Demo Mode Disabled Guard
-  // ===========================================================================
   it('fails closed and refuses activation when demo mode is disabled', () => {
     expect(() =>
       simulateActivateDemoSubscriptionRpc({
         callerUid: 'usr-alice-123',
-        demoPaymentsEnabled: false, // Flag disabled
+        demoPaymentsEnabled: false,
         planTier: 'monthly',
       })
     ).toThrow(/Demo payments are disabled\. Real payment verification required\./i);
@@ -204,18 +177,14 @@ describe('Demo Payment Mode — Unit & Integration Test Suite', () => {
     expect(db.subscriptions.size).toBe(0);
   });
 
-  // ===========================================================================
-  // 5. User-Scoped Authorization (No cross-user activation)
-  // ===========================================================================
   it('strictly scopes activation to the authenticated session caller, preventing cross-user mutation', () => {
-    // User A activates
+
     simulateActivateDemoSubscriptionRpc({
       callerUid: 'user-A',
       demoPaymentsEnabled: true,
       planTier: 'monthly',
     });
 
-    // User B activates
     simulateActivateDemoSubscriptionRpc({
       callerUid: 'user-B',
       demoPaymentsEnabled: true,
@@ -225,14 +194,10 @@ describe('Demo Payment Mode — Unit & Integration Test Suite', () => {
     expect(db.subscriptions.get('user-A')?.plan_tier).toBe('monthly');
     expect(db.subscriptions.get('user-B')?.plan_tier).toBe('yearly');
 
-    // User A cannot modify User B's subscription because RPC caller is auth.uid()
     expect(db.subscriptions.get('user-A')?.user_id).toBe('user-A');
     expect(db.subscriptions.get('user-B')?.user_id).toBe('user-B');
   });
 
-  // ===========================================================================
-  // 6. UI Labeling & Feedback Logic
-  // ===========================================================================
   it('correctly provides UI labels depending on demo mode flag', () => {
     function getCheckoutButtonLabel(params: {
       isDemo: boolean;

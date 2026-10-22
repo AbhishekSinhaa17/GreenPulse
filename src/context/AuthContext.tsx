@@ -18,7 +18,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return p;
     } catch (err) {
       console.error('[AuthContext] Failed to load/ensure profile:', err);
-      // Fallback: try raw query
+
       try {
         const raw = await authService.getUserProfile(u.id);
         setProfile(raw);
@@ -37,7 +37,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     let isMounted = true;
 
-    // 1. Initial session restoration
     supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
       if (!isMounted) return;
       setSession(initialSession);
@@ -51,7 +50,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     });
 
-    // 2. Auth state subscription
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, newSession) => {

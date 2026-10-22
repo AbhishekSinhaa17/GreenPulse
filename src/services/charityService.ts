@@ -2,9 +2,7 @@ import { requireSupabase, env } from '../lib/supabase';
 import type { Charity, CharityPreference, CharityEvent } from '../types';
 
 export const charityService = {
-  /**
-   * Fetches the full charity directory with fallback to default vetted charities if DB is unconfigured.
-   */
+
   async getCharities(): Promise<Charity[]> {
     if (!env.isSupabaseConfigured) {
       return [];

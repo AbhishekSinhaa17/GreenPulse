@@ -9,20 +9,15 @@ interface GolfScoreRecord {
   created_at: string;
 }
 
-/**
- * In-memory reference implementation of the PostgreSQL 5-score rolling engine
- * replicating the logic enforced by record_golf_score() and trg_score_rolling.
- */
 class ScoreRollingEngine {
   private scores: GolfScoreRecord[] = [];
 
   submitScore(userId: string, score: number, playedAt: string, courseName?: string): GolfScoreRecord[] {
-    // PRD § 05: Stableford format integer range 1-45
+
     if (!Number.isInteger(score) || score < 1 || score > 45) {
       throw new Error(`Score ${score} out of bounds. Stableford format requires 1 to 45 points.`);
     }
 
-    // PRD § 05: One score entry permitted per date
     const exists = this.scores.some((s) => s.user_id === userId && s.played_at === playedAt);
     if (exists) {
       throw new Error(`A score entry already exists for date ${playedAt}. Duplicate scores are not allowed.`);
@@ -37,10 +32,8 @@ class ScoreRollingEngine {
       created_at: new Date().toISOString(),
     };
 
-    // Add new score
     this.scores.push(newEntry);
 
-    // Retain only latest 5 sorted reverse-chronologically (newest first)
     this.scores.sort((a, b) => new Date(b.played_at).getTime() - new Date(a.played_at).getTime());
 
     if (this.scores.length > 5) {
@@ -97,8 +90,7 @@ describe('PRD § 05 Stableford Score Management & 5-Score Rolling Engine', () =>
   it('enforces 5-score rolling FIFO: 6th sequential score automatically replaces oldest', () => {
     const engine = new ScoreRollingEngine();
 
-    // Insert 5 rounds
-    engine.submitScore('u1', 32, '2026-10-01'); // Oldest
+    engine.submitScore('u1', 32, '2026-10-01');
     engine.submitScore('u1', 34, '2026-10-05');
     engine.submitScore('u1', 36, '2026-10-10');
     engine.submitScore('u1', 38, '2026-10-15');
@@ -113,10 +105,8 @@ describe('PRD § 05 Stableford Score Management & 5-Score Rolling Engine', () =>
       '2026-10-01',
     ]);
 
-    // Insert 6th round (newer)
     const after6th = engine.submitScore('u1', 42, '2026-10-25');
 
-    // Exactly 5 remain; oldest ('2026-10-01') is dropped
     expect(after6th).toHaveLength(5);
     expect(after6th[0].played_at).toBe('2026-10-25');
     expect(after6th[0].score).toBe(42);

@@ -221,7 +221,6 @@ export const DeleteCharityModal: React.FC<DeleteCharityModalProps> = ({
           }
         `}</style>
 
-        {/* Alert Header */}
         <div className="dc-alert-header">
           <span className="dc-alert-icon">
             <ShieldAlert size={18} />
@@ -233,7 +232,6 @@ export const DeleteCharityModal: React.FC<DeleteCharityModalProps> = ({
           </div>
         </div>
 
-        {/* Protection Explanation */}
         <div className="dc-protection-box">
           <div className="dc-protection-head">
             <DatabaseZap size={13} />

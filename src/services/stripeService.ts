@@ -12,10 +12,7 @@ export interface CheckoutError {
 }
 
 export const stripeService = {
-  /**
-   * Invokes the trusted Supabase Edge Function to create a recurring Stripe Checkout Session.
-   * Derives caller identity from the active Supabase Auth JWT (never client-supplied user ID).
-   */
+
   async createSubscriptionCheckout(
     planTier: SubscriptionPlan,
     charityId?: string,
@@ -34,7 +31,6 @@ export const stripeService = {
       throw new Error('You must be signed in to join a GreenPulse membership.');
     }
 
-    // Call server-side Edge Function
     const { data, error } = await client.functions.invoke('create-checkout-session', {
       body: {
         mode: 'subscription',
@@ -46,7 +42,7 @@ export const stripeService = {
 
     if (error) {
       console.error('[stripeService] Edge function checkout session error:', error);
-      // If Edge Function returns a formatted JSON error
+
       const errorMsg =
         typeof error === 'object' && error !== null && 'message' in error
           ? (error as { message: string }).message
@@ -67,10 +63,6 @@ export const stripeService = {
     };
   },
 
-  /**
-   * Creates a standalone charity donation Checkout Session.
-   * Works for both authenticated members and guest visitors.
-   */
   async createDonationCheckout(
     charityId: string,
     amountCents: number

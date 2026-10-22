@@ -2,10 +2,7 @@ import { requireSupabase, env } from '../lib/supabase';
 import type { Subscription, SubscriptionPlan } from '../types';
 
 export const subscriptionService = {
-  /**
-   * Fetches the active or latest subscription record for the given user from PostgreSQL.
-   * Returns null if the user has no recorded subscription.
-   */
+
   async getUserSubscription(userId: string): Promise<Subscription | null> {
     if (!env.isSupabaseConfigured) {
       if (env.demoPayments && typeof window !== 'undefined') {
@@ -14,7 +11,7 @@ export const subscriptionService = {
           try {
             return JSON.parse(stored) as Subscription;
           } catch {
-            // ignore JSON parse error
+
           }
         }
       }
@@ -38,11 +35,6 @@ export const subscriptionService = {
     return data as Subscription | null;
   },
 
-  /**
-   * Activates a simulated/demo subscription for the currently authenticated user.
-   * Only permitted when VITE_DEMO_PAYMENTS=true is configured.
-   * Calls the secure user-scoped PostgreSQL RPC activate_demo_subscription.
-   */
   async activateDemoSubscription(
     plan: SubscriptionPlan,
     charityId?: string,
@@ -53,7 +45,7 @@ export const subscriptionService = {
     }
 
     if (!env.isSupabaseConfigured) {
-      // Local preview simulation when Supabase backend is not configured
+
       const demoSub: Subscription = {
         id: `demo-sub-${Date.now()}`,
         user_id: 'demo-user',
@@ -69,7 +61,7 @@ export const subscriptionService = {
         try {
           sessionStorage.setItem('gp_demo_subscription', JSON.stringify(demoSub));
         } catch {
-          // ignore
+
         }
       }
       return demoSub;
@@ -81,7 +73,6 @@ export const subscriptionService = {
       throw new Error('Authentication required: You must be signed in to activate a demo subscription.');
     }
 
-    // Call canonical secure user-scoped RPC
     const { data, error } = await client.rpc('activate_demo_subscription', {
       p_plan_tier: plan,
       p_charity_id: charityId || null,
@@ -98,7 +89,7 @@ export const subscriptionService = {
       try {
         sessionStorage.setItem(`gp_demo_sub_${user.id}`, JSON.stringify(sub));
       } catch {
-        // ignore
+
       }
     }
     return sub;

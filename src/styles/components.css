@@ -1,11 +1,3 @@
-/* ==========================================================================
-   GreenPulse Component Styles (Plain Vanilla CSS)
-   Buttons, Cards, Badges, Form Inputs, Dialogs, Toasts, Layout
-   ========================================================================== */
-
-/* --------------------------------------------------------------------------
-   Layout Containers & Grids
-   -------------------------------------------------------------------------- */
 .container {
   width: 100%;
   max-width: var(--container-xl);
@@ -34,9 +26,6 @@
   padding-bottom: var(--space-16);
 }
 
-/* --------------------------------------------------------------------------
-   Buttons (.btn)
-   -------------------------------------------------------------------------- */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -62,7 +51,6 @@
   pointer-events: none;
 }
 
-/* Primary - Forest Green with warm cream text */
 .btn-primary {
   background-color: var(--forest-800);
   color: var(--bg-primary);
@@ -79,7 +67,6 @@
   transform: translateY(0);
 }
 
-/* Secondary - Muted Lime Accent */
 .btn-accent {
   background-color: var(--lime-500);
   color: var(--forest-950);
@@ -92,7 +79,6 @@
   box-shadow: 0 4px 16px rgba(142, 166, 51, 0.35);
 }
 
-/* Outline - Subtle Forest border */
 .btn-outline {
   background-color: transparent;
   color: var(--forest-800);
@@ -104,7 +90,6 @@
   background-color: rgba(20, 53, 37, 0.04);
 }
 
-/* Ghost */
 .btn-ghost {
   background-color: transparent;
   color: var(--charcoal-700);
@@ -115,7 +100,6 @@
   color: var(--forest-900);
 }
 
-/* Sizes */
 .btn-sm {
   padding: 0.5rem 1rem;
   font-size: var(--text-xs);
@@ -126,9 +110,6 @@
   font-size: var(--text-base);
 }
 
-/* --------------------------------------------------------------------------
-   Cards (.card)
-   -------------------------------------------------------------------------- */
 .card {
   background-color: var(--bg-surface);
   border-radius: var(--radius-lg);
@@ -161,9 +142,6 @@
   color: var(--charcoal-300);
 }
 
-/* --------------------------------------------------------------------------
-   Badges (.badge)
-   -------------------------------------------------------------------------- */
 .badge {
   display: inline-flex;
   align-items: center;
@@ -213,9 +191,6 @@
   border: 1px solid var(--charcoal-200);
 }
 
-/* --------------------------------------------------------------------------
-   Form Fields & Controls (.form-group, .form-input, .form-label)
-   -------------------------------------------------------------------------- */
 .form-group {
   display: flex;
   flex-direction: column;
@@ -272,9 +247,6 @@
   color: var(--text-muted);
 }
 
-/* --------------------------------------------------------------------------
-   Draw Numbers / Score Tokens (.score-ball)
-   -------------------------------------------------------------------------- */
 .score-ball {
   display: inline-flex;
   align-items: center;
@@ -305,9 +277,6 @@
   border-color: var(--lime-400);
 }
 
-/* --------------------------------------------------------------------------
-   Dialogs & Modals (.dialog-overlay, .dialog-content)
-   -------------------------------------------------------------------------- */
 .dialog-overlay {
   position: fixed;
   inset: 0;
@@ -353,9 +322,6 @@
   border-top: 1px solid var(--border-subtle);
 }
 
-/* --------------------------------------------------------------------------
-   Toast Notifications (.toast-container, .toast)
-   -------------------------------------------------------------------------- */
 .toast-container {
   position: fixed;
   bottom: var(--space-6);

@@ -37,10 +37,6 @@ import {
   ListChecks,
 } from "lucide-react";
 
-/* -------------------------------------------------------------------------- */
-/*  Animation Variants                                                        */
-/* -------------------------------------------------------------------------- */
-
 const fadeUp: Variants = {
   hidden: { opacity: 0, y: 18 },
   visible: {
@@ -63,10 +59,6 @@ const rowVariants: Variants = {
     transition: { duration: 0.35, ease: [0.22, 1, 0.36, 1] },
   },
 };
-
-/* -------------------------------------------------------------------------- */
-/*  Ticket Progress Ring                                                      */
-/* -------------------------------------------------------------------------- */
 
 const TicketProgressRing: React.FC<{ count: number }> = ({ count }) => {
   const total = 5;
@@ -150,7 +142,6 @@ export const DashboardPage: React.FC = () => {
     isConfigured,
   } = useAuth();
 
-  // State
   const [scores, setScores] = useState<GolfScore[]>([]);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [charityPref, setCharityPref] = useState<CharityPreference | null>(
@@ -160,7 +151,6 @@ export const DashboardPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  // Profile Edit Modal: Golfer Handicap & Home Club
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [editFullName, setEditFullName] = useState(profile?.full_name || "");
   const [editHandicap, setEditHandicap] = useState<string>(
@@ -169,14 +159,12 @@ export const DashboardPage: React.FC = () => {
   const [editHomeClub, setEditHomeClub] = useState(profile?.home_club || "");
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
 
-  // Score Entry Modal
   const [isAddScoreOpen, setIsAddScoreOpen] = useState(false);
   const [newScoreVal, setNewScoreVal] = useState<number | "">(36);
   const [newScoreDate, setNewScoreDate] = useState<string>("");
   const [newScoreCourse, setNewScoreCourse] = useState<string>("");
   const [isSubmittingScore, setIsSubmittingScore] = useState(false);
 
-  // Proof Upload Modal
   const [isUploadProofOpen, setIsUploadProofOpen] = useState(false);
   const [selectedClaim, setSelectedClaim] = useState<WinnerClaim | null>(null);
   const [proofFile, setProofFile] = useState<File | null>(null);
@@ -221,7 +209,6 @@ export const DashboardPage: React.FC = () => {
     loadDashboardData();
   }, [loadDashboardData]);
 
-  // Handle Score Submission with Real Database Enforcement
   const handleAddScore = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -397,7 +384,6 @@ export const DashboardPage: React.FC = () => {
     );
   }
 
-  // Administrators operate via the Admin Portal, not the personal golfer dashboard
   if (isAdmin || role === "admin") {
     return <Navigate to="/admin" replace />;
   }
@@ -409,7 +395,6 @@ export const DashboardPage: React.FC = () => {
         <div className="dp-orb dp-orb-2" />
       </div>
 
-      {/* 1. Header: Real Subscription Status ("active / inactive / renewal date") */}
       <motion.div
         initial="hidden"
         animate="visible"
@@ -595,7 +580,6 @@ export const DashboardPage: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* Grid: Selected Charity & Participation / Winnings Summary */}
       <motion.div
         variants={staggerContainer}
         initial="hidden"
@@ -608,7 +592,7 @@ export const DashboardPage: React.FC = () => {
           marginBottom: "var(--space-8)",
         }}
       >
-        {/* Module A: Selected Charity */}
+
         <motion.div variants={fadeUp} whileHover={{ y: -4 }}>
           <Card
             className="dp-module-card dp-module-charity"
@@ -679,7 +663,6 @@ export const DashboardPage: React.FC = () => {
           </Card>
         </motion.div>
 
-        {/* Module B: Winnings & Verification Status */}
         <motion.div variants={fadeUp} whileHover={{ y: -4 }}>
           <Card
             variant="warm"
@@ -785,7 +768,6 @@ export const DashboardPage: React.FC = () => {
                       </Badge>
                     </div>
 
-                    {/* Rejection alert */}
                     <AnimatePresence>
                       {claim.status === "rejected" && (
                         <motion.div
@@ -811,7 +793,6 @@ export const DashboardPage: React.FC = () => {
                       )}
                     </AnimatePresence>
 
-                    {/* Status explanation */}
                     {claim.status === "under_review" && (
                       <p
                         style={{
@@ -850,7 +831,6 @@ export const DashboardPage: React.FC = () => {
                       </p>
                     )}
 
-                    {/* Action buttons */}
                     {(claim.status === "pending_proof" ||
                       claim.status === "rejected") && (
                       <motion.div
@@ -893,7 +873,6 @@ export const DashboardPage: React.FC = () => {
           </Card>
         </motion.div>
 
-        {/* Module C: Participation Summary */}
         <motion.div variants={fadeUp} whileHover={{ y: -4 }}>
           <Card
             className="dp-module-card dp-module-participation"
@@ -982,7 +961,6 @@ export const DashboardPage: React.FC = () => {
         </motion.div>
       </motion.div>
 
-      {/* 2. Score Management Interface: 5 rolling scores, reverse chronological, one per date */}
       <motion.div
         initial="hidden"
         whileInView="visible"
@@ -1247,7 +1225,6 @@ export const DashboardPage: React.FC = () => {
         </Card>
       </motion.div>
 
-      {/* Modal 1: Add Score Dialog */}
       <Dialog
         isOpen={isAddScoreOpen}
         onClose={() => setIsAddScoreOpen(false)}
@@ -1303,7 +1280,6 @@ export const DashboardPage: React.FC = () => {
         </form>
       </Dialog>
 
-      {/* Modal 2: Upload Winner Proof Dialog */}
       <Dialog
         isOpen={isUploadProofOpen}
         onClose={() => setIsUploadProofOpen(false)}
@@ -1422,7 +1398,6 @@ export const DashboardPage: React.FC = () => {
         </form>
       </Dialog>
 
-      {/* Modal 3: Edit Golfer Profile Dialog */}
       <Dialog
         isOpen={isEditProfileOpen}
         onClose={() => setIsEditProfileOpen(false)}

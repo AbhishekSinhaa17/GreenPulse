@@ -17,8 +17,6 @@ interface AnalyticsSectionProps {
   totalCharities: number;
 }
 
-/* ---------------- CountUp ---------------- */
-
 const useCountUp = (target: number, duration = 900) => {
   const [value, setValue] = useState(0);
   const rafRef = useRef<number | null>(null);
@@ -29,7 +27,7 @@ const useCountUp = (target: number, duration = 900) => {
 
     const tick = (now: number) => {
       const progress = Math.min((now - start) / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3); // ease-out-cubic
+      const eased = 1 - Math.pow(1 - progress, 3);
       setValue(Math.round(from + (target - from) * eased));
       if (progress < 1) {
         rafRef.current = requestAnimationFrame(tick);
@@ -57,8 +55,6 @@ const CountUp: React.FC<{ value: number; prefix?: string }> = ({
     </>
   );
 };
-
-/* ---------------- KPI Card ---------------- */
 
 interface KpiCardProps {
   label: string;
@@ -95,8 +91,6 @@ const KpiCard: React.FC<KpiCardProps> = ({
   </div>
 );
 
-/* ---------------- Animated Bar Row ---------------- */
-
 const BarRow: React.FC<{
   label: string;
   count: number;
@@ -127,8 +121,6 @@ const BarRow: React.FC<{
     </div>
   );
 };
-
-/* ---------------- Pill Stat ---------------- */
 
 const PillStat: React.FC<{ label: string; count: number; delay: number }> = ({
   label,
@@ -486,7 +478,6 @@ export const AnalyticsSection: React.FC<AnalyticsSectionProps> = ({
         }
       `}</style>
 
-      {/* Top KPI Cards Grid */}
       <div className="kpi-grid">
         <KpiCard
           label="Total Registered Users"
@@ -526,9 +517,8 @@ export const AnalyticsSection: React.FC<AnalyticsSectionProps> = ({
         />
       </div>
 
-      {/* Breakdown Distributions */}
       <div className="breakdown-grid">
-        {/* Subscription Status Breakdown */}
+
         <Card className="section-card">
           <h4 className="section-title">Subscription Status Breakdown</h4>
           <p className="section-desc">
@@ -579,7 +569,6 @@ export const AnalyticsSection: React.FC<AnalyticsSectionProps> = ({
           </div>
         </Card>
 
-        {/* Winner Claims Status & Tier Distribution */}
         <Card className="section-card">
           <h4 className="section-title">Winner Claims Verification Pipeline</h4>
           <p className="section-desc">

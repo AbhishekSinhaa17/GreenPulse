@@ -245,7 +245,6 @@ export const ConfirmDrawModal: React.FC<ConfirmDrawModalProps> = ({
           }
         `}</style>
 
-        {/* Winning Numbers Reveal Panel */}
         <div className="cd-numbers-panel">
           <div className="cd-numbers-label">
             <Trophy size={14} />
@@ -264,7 +263,6 @@ export const ConfirmDrawModal: React.FC<ConfirmDrawModalProps> = ({
           </div>
         </div>
 
-        {/* Stat Cards */}
         <div className="cd-stats-grid">
           <div
             className="cd-stat-card"
@@ -350,7 +348,6 @@ export const ConfirmDrawModal: React.FC<ConfirmDrawModalProps> = ({
           {totalWinners} total winning entries across all prize tiers
         </div>
 
-        {/* Immutability Warning */}
         <div className="cd-warning">
           <AlertCircle size={16} className="cd-warning-icon" />
           <span className="cd-warning-text">

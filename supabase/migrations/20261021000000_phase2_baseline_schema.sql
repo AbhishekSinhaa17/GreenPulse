@@ -1,18 +1,6 @@
--- ==============================================================================
--- GreenPulse — Phase 2 Baseline Database Migration
--- Source of Truth: Digital Heroes PRD (Level 1)
--- Stack: Supabase PostgreSQL, Auth, RLS, Storage
--- ==============================================================================
-
--- 1. EXTENSIONS
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
--- ==============================================================================
--- 2. SCHEMAS & HELPER FUNCTIONS
--- ==============================================================================
-
--- Admin check helper function (SECURITY DEFINER to prevent RLS recursion)
 CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS BOOLEAN AS $$
 BEGIN
@@ -23,7 +11,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
--- Updated at timestamp helper
 CREATE OR REPLACE FUNCTION public.handle_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -32,11 +19,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- ==============================================================================
--- 3. TABLES
--- ==============================================================================
-
--- 3.1 PROFILES (Linked to auth.users)
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   email TEXT NOT NULL UNIQUE,
@@ -49,7 +31,6 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 3.2 SUBSCRIPTIONS (PRD § 04)
 CREATE TABLE IF NOT EXISTS public.subscriptions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
@@ -65,7 +46,6 @@ CREATE TABLE IF NOT EXISTS public.subscriptions (
 );
 CREATE INDEX IF NOT EXISTS idx_subscriptions_user_status ON public.subscriptions(user_id, status);
 
--- 3.3 GOLF SCORES (PRD § 05: 1-45 Stableford, max 5, one per date)
 CREATE TABLE IF NOT EXISTS public.golf_scores (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
@@ -78,7 +58,6 @@ CREATE TABLE IF NOT EXISTS public.golf_scores (
 );
 CREATE INDEX IF NOT EXISTS idx_golf_scores_user_played ON public.golf_scores(user_id, played_at DESC);
 
--- 3.4 CHARITIES (PRD § 08)
 CREATE TABLE IF NOT EXISTS public.charities (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
@@ -96,7 +75,6 @@ CREATE TABLE IF NOT EXISTS public.charities (
 );
 CREATE INDEX IF NOT EXISTS idx_charities_category_featured ON public.charities(category, is_featured);
 
--- 3.5 CHARITY PREFERENCES (PRD § 08.1: min 10% contribution)
 CREATE TABLE IF NOT EXISTS public.charity_preferences (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL UNIQUE REFERENCES public.profiles(id) ON DELETE CASCADE,
@@ -105,7 +83,6 @@ CREATE TABLE IF NOT EXISTS public.charity_preferences (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 3.6 CHARITY EVENTS (PRD § 08.2: Upcoming golf days, etc.)
 CREATE TABLE IF NOT EXISTS public.charity_events (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   charity_id UUID NOT NULL REFERENCES public.charities(id) ON DELETE CASCADE,
@@ -117,7 +94,6 @@ CREATE TABLE IF NOT EXISTS public.charity_events (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 3.7 DRAWS (PRD § 06, § 07: Monthly, Random vs Algorithmic, rollover jackpot)
 CREATE TABLE IF NOT EXISTS public.draws (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   draw_title TEXT NOT NULL,
@@ -140,7 +116,6 @@ CREATE TABLE IF NOT EXISTS public.draws (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 3.8 DRAW ENTRIES (PRD § 06: User distinct score snapshot per monthly draw)
 CREATE TABLE IF NOT EXISTS public.draw_entries (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   draw_id UUID NOT NULL REFERENCES public.draws(id) ON DELETE CASCADE,
@@ -154,7 +129,6 @@ CREATE TABLE IF NOT EXISTS public.draw_entries (
 );
 CREATE INDEX IF NOT EXISTS idx_draw_entries_draw_tier ON public.draw_entries(draw_id, match_tier);
 
--- 3.9 WINNER CLAIMS (PRD § 09: Proof upload and verification)
 CREATE TABLE IF NOT EXISTS public.winner_claims (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   draw_id UUID NOT NULL REFERENCES public.draws(id) ON DELETE CASCADE,
@@ -176,7 +150,6 @@ CREATE TABLE IF NOT EXISTS public.winner_claims (
 );
 CREATE INDEX IF NOT EXISTS idx_winner_claims_user_status ON public.winner_claims(user_id, status);
 
--- 3.10 DONATION LEDGER (PRD § 08.1: Independent donations and subscription splits)
 CREATE TABLE IF NOT EXISTS public.donation_ledger (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   charity_id UUID NOT NULL REFERENCES public.charities(id) ON DELETE RESTRICT,
@@ -187,11 +160,6 @@ CREATE TABLE IF NOT EXISTS public.donation_ledger (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- ==============================================================================
--- 4. DATABASE TRIGGERS & SECURITY CONSTRAINTS
--- ==============================================================================
-
--- 4.1 Auto-provision Profile on Auth Sign Up (Always default to 'subscriber')
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -200,7 +168,7 @@ BEGIN
     NEW.id,
     NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'full_name', split_part(NEW.email, '@', 1)),
-    'subscriber' -- Never allow user to choose admin role during public signup
+    'subscriber'
   );
   RETURN NEW;
 END;
@@ -211,7 +179,6 @@ CREATE TRIGGER on_auth_user_created
 AFTER INSERT ON auth.users
 FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
--- 4.2 Prevent Non-Admins from Altering the Role Column
 CREATE OR REPLACE FUNCTION public.prevent_unauthorized_role_change()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -227,7 +194,6 @@ CREATE TRIGGER trg_prevent_role_change
 BEFORE UPDATE ON public.profiles
 FOR EACH ROW EXECUTE FUNCTION public.prevent_unauthorized_role_change();
 
--- 4.3 Five-Score Rolling FIFO Procedure (Transactionally Safe)
 CREATE OR REPLACE FUNCTION public.record_golf_score(
   p_score INTEGER,
   p_played_at DATE,
@@ -244,25 +210,20 @@ BEGIN
     RAISE EXCEPTION 'Authentication required to submit golf score.';
   END IF;
 
-  -- Validate score range (PRD § 05)
   IF p_score < 1 OR p_score > 45 THEN
     RAISE EXCEPTION 'Score % is out of bounds. Stableford format requires 1 to 45 points.', p_score;
   END IF;
 
-  -- Lock user profile to ensure serialized score entry
   PERFORM 1 FROM public.profiles WHERE id = v_user_id FOR UPDATE;
 
-  -- Check duplicate date constraint (PRD § 05)
   IF EXISTS (SELECT 1 FROM public.golf_scores WHERE user_id = v_user_id AND played_at = p_played_at) THEN
     RAISE EXCEPTION 'A score entry already exists for date %. Existing entries may only be edited or deleted.', p_played_at;
   END IF;
 
-  -- Insert new score
   INSERT INTO public.golf_scores (user_id, score, played_at, course_name)
   VALUES (v_user_id, p_score, p_played_at, p_course_name)
   RETURNING id INTO v_new_id;
 
-  -- Transactionally drop scores beyond the latest 5 (ordered by date descending, then creation timestamp)
   DELETE FROM public.golf_scores
   WHERE id IN (
     SELECT id FROM public.golf_scores
@@ -271,7 +232,6 @@ BEGIN
     OFFSET 5
   );
 
-  -- Return updated latest 5 scores as JSON
   SELECT jsonb_agg(to_jsonb(s)) INTO v_result
   FROM (
     SELECT id, score, played_at, course_name, verified, created_at
@@ -289,7 +249,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
--- Defense-in-depth trigger for direct table inserts
 CREATE OR REPLACE FUNCTION public.handle_score_rolling()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -309,7 +268,6 @@ CREATE TRIGGER trg_score_rolling
 AFTER INSERT ON public.golf_scores
 FOR EACH ROW EXECUTE FUNCTION public.handle_score_rolling();
 
--- Apply updated_at triggers
 DROP TRIGGER IF EXISTS trg_profiles_updated_at ON public.profiles;
 CREATE TRIGGER trg_profiles_updated_at BEFORE UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
@@ -325,11 +283,6 @@ CREATE TRIGGER trg_charity_pref_updated_at BEFORE UPDATE ON public.charity_prefe
 DROP TRIGGER IF EXISTS trg_winner_claims_updated_at ON public.winner_claims;
 CREATE TRIGGER trg_winner_claims_updated_at BEFORE UPDATE ON public.winner_claims FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
--- ==============================================================================
--- 5. ROW LEVEL SECURITY (RLS) POLICIES
--- ==============================================================================
-
--- Enable RLS on all tables
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.subscriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.golf_scores ENABLE ROW LEVEL SECURITY;
@@ -341,7 +294,6 @@ ALTER TABLE public.draw_entries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.winner_claims ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.donation_ledger ENABLE ROW LEVEL SECURITY;
 
--- 5.1 PROFILES POLICIES (Zero-recursion using public.is_admin())
 CREATE POLICY "Public profiles are readable by authenticated users"
   ON public.profiles FOR SELECT
   TO authenticated
@@ -353,7 +305,6 @@ CREATE POLICY "Users can update their own profile"
   USING (auth.uid() = id)
   WITH CHECK (auth.uid() = id);
 
--- 5.2 SUBSCRIPTIONS POLICIES
 CREATE POLICY "Users can read their own subscriptions"
   ON public.subscriptions FOR SELECT
   TO authenticated
@@ -364,7 +315,6 @@ CREATE POLICY "Only admins or service role can manage subscriptions"
   TO authenticated
   USING (public.is_admin());
 
--- 5.3 GOLF SCORES POLICIES
 CREATE POLICY "Users can read their own golf scores"
   ON public.golf_scores FOR SELECT
   TO authenticated
@@ -385,7 +335,6 @@ CREATE POLICY "Users can delete their own golf scores"
   TO authenticated
   USING (auth.uid() = user_id OR public.is_admin());
 
--- 5.4 CHARITIES POLICIES (Public read; Admin full control)
 CREATE POLICY "Public can view charities"
   ON public.charities FOR SELECT
   TO anon, authenticated
@@ -397,14 +346,12 @@ CREATE POLICY "Admins manage charities"
   USING (public.is_admin())
   WITH CHECK (public.is_admin());
 
--- 5.5 CHARITY PREFERENCES POLICIES
 CREATE POLICY "Users manage their own charity preferences"
   ON public.charity_preferences FOR ALL
   TO authenticated
   USING (auth.uid() = user_id OR public.is_admin())
   WITH CHECK (auth.uid() = user_id OR public.is_admin());
 
--- 5.6 CHARITY EVENTS POLICIES
 CREATE POLICY "Public can view charity events"
   ON public.charity_events FOR SELECT
   TO anon, authenticated
@@ -415,7 +362,6 @@ CREATE POLICY "Admins manage charity events"
   TO authenticated
   USING (public.is_admin());
 
--- 5.7 DRAWS POLICIES
 CREATE POLICY "Public can view published draws"
   ON public.draws FOR SELECT
   TO anon, authenticated
@@ -427,7 +373,6 @@ CREATE POLICY "Admins manage draws"
   USING (public.is_admin())
   WITH CHECK (public.is_admin());
 
--- 5.8 DRAW ENTRIES POLICIES
 CREATE POLICY "Users view their own draw entries"
   ON public.draw_entries FOR SELECT
   TO authenticated
@@ -438,7 +383,6 @@ CREATE POLICY "Admins manage draw entries"
   TO authenticated
   USING (public.is_admin());
 
--- 5.9 WINNER CLAIMS POLICIES
 CREATE POLICY "Users view their own winner claims"
   ON public.winner_claims FOR SELECT
   TO authenticated
@@ -455,7 +399,6 @@ CREATE POLICY "Admins review and manage all winner claims"
   TO authenticated
   USING (public.is_admin());
 
--- 5.10 DONATION LEDGER POLICIES
 CREATE POLICY "Users view their own donations"
   ON public.donation_ledger FOR SELECT
   TO authenticated
@@ -466,15 +409,10 @@ CREATE POLICY "Admins view all donations"
   TO authenticated
   USING (public.is_admin());
 
--- ==============================================================================
--- 6. STORAGE BUCKET CONFIGURATION (Winner Proofs)
--- ==============================================================================
-
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('winner-proofs', 'winner-proofs', false)
 ON CONFLICT (id) DO NOTHING;
 
--- Storage RLS
 CREATE POLICY "Winners upload their own proof"
   ON storage.objects FOR INSERT
   TO authenticated

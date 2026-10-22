@@ -45,8 +45,8 @@ export interface Subscription {
 export interface GolfScore {
   id: string;
   user_id: string;
-  score: number; // Stableford points (1-45)
-  played_at: string; // YYYY-MM-DD
+  score: number;
+  played_at: string;
   course_name?: string;
   verified: boolean;
   created_at: string;
@@ -97,7 +97,7 @@ export interface CharityEvent {
 export interface CharityPreference {
   user_id: string;
   charity_id: string;
-  percentage: number; // 10% to 100%
+  percentage: number;
   charity?: Charity;
 }
 
@@ -108,7 +108,7 @@ export type MatchTier = 'tier_5' | 'tier_4' | 'tier_3' | 'none';
 export interface MonthlyDraw {
   id: string;
   draw_title: string;
-  draw_month: string; // YYYY-MM
+  draw_month: string;
   draw_logic: DrawLogic;
   status: DrawStatus;
   winning_numbers?: [number, number, number, number, number];
@@ -130,7 +130,7 @@ export interface DrawEntry {
   id: string;
   draw_id: string;
   user_id: string;
-  numbers_snapshot: number[]; // Distinct scores at time of draw
+  numbers_snapshot: number[];
   matched_count?: number;
   match_tier?: MatchTier;
   prize_awarded_cents: number;

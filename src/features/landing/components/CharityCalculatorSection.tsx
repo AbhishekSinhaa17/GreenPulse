@@ -3,10 +3,6 @@ import { motion, useMotionValue, useSpring } from "framer-motion";
 import { Heart, Sparkles, TrendingUp } from "lucide-react";
 import { Badge } from "../../../components/ui/Badge";
 
-/* -------------------------------------------------------------------------- */
-/*  Animated Number                                                           */
-/* -------------------------------------------------------------------------- */
-
 const AnimatedNumber: React.FC<{
   value: number;
   decimals?: number;
@@ -39,20 +35,12 @@ const AnimatedNumber: React.FC<{
   );
 };
 
-/* -------------------------------------------------------------------------- */
-/*  Milestones                                                                */
-/* -------------------------------------------------------------------------- */
-
 const MILESTONES = [
   { value: 10, label: "10% Min" },
   { value: 25, label: "25%" },
   { value: 50, label: "50%" },
   { value: 100, label: "100%" },
 ];
-
-/* -------------------------------------------------------------------------- */
-/*  Section                                                                   */
-/* -------------------------------------------------------------------------- */
 
 export const CharityCalculatorSection: React.FC = () => {
   const [charityPercent, setCharityPercent] = useState(15);
@@ -73,7 +61,7 @@ export const CharityCalculatorSection: React.FC = () => {
         overflow: "hidden",
       }}
     >
-      {/* Ambient background */}
+
       <div
         aria-hidden
         style={{
@@ -103,7 +91,7 @@ export const CharityCalculatorSection: React.FC = () => {
             overflow: "hidden",
           }}
         >
-          {/* Floating decorative heart */}
+
           <motion.div
             aria-hidden
             animate={{ y: [0, -10, 0], opacity: [0.5, 0.9, 0.5] }}
@@ -186,9 +174,8 @@ export const CharityCalculatorSection: React.FC = () => {
               </motion.span>
             </div>
 
-            {/* Custom slider track */}
             <div style={{ position: "relative", padding: "14px 0" }}>
-              {/* Base track */}
+
               <div
                 aria-hidden
                 style={{
@@ -202,7 +189,7 @@ export const CharityCalculatorSection: React.FC = () => {
                   transform: "translateY(-50%)",
                 }}
               />
-              {/* Filled track */}
+
               <motion.div
                 aria-hidden
                 animate={{ width: `${trackFillPercent}%` }}
@@ -222,7 +209,6 @@ export const CharityCalculatorSection: React.FC = () => {
                 }}
               />
 
-              {/* Milestone dots */}
               {MILESTONES.map((m) => {
                 const pos = ((m.value - 10) / (100 - 10)) * 100;
                 const reached = charityPercent >= m.value;
@@ -312,7 +298,6 @@ export const CharityCalculatorSection: React.FC = () => {
               ))}
             </div>
 
-            {/* Impact bar visualization */}
             <div style={{ marginTop: "var(--space-8)" }}>
               <div
                 style={{
@@ -371,7 +356,6 @@ export const CharityCalculatorSection: React.FC = () => {
               </div>
             </div>
 
-            {/* Stat cards */}
             <div
               style={{
                 display: "grid",

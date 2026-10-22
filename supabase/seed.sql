@@ -1,8 +1,3 @@
--- ==============================================================================
--- GreenPulse — Initial Seed Data
--- ==============================================================================
-
--- 1. Insert Initial Vetted Charities (PRD § 08)
 INSERT INTO public.charities (name, slug, tagline, description, category, is_featured, total_raised_cents, website_url)
 VALUES
   (
@@ -47,7 +42,6 @@ VALUES
   )
 ON CONFLICT (slug) DO NOTHING;
 
--- 2. Insert Charity Upcoming Events (PRD § 08.2)
 INSERT INTO public.charity_events (charity_id, title, description, event_date, location)
 SELECT id, 'Autumn Junior Invitational Pro-Am', '18-hole charity team scramble pairing junior trainees with European Tour professionals.', '2026-11-14', 'Gleneagles PGA Centenary Course'
 FROM public.charities WHERE slug = 'fairway-green-youth'
@@ -58,7 +52,6 @@ SELECT id, 'Coastal Links Wildflower Planting Day', 'Community conservation volu
 FROM public.charities WHERE slug = 'open-course-conservation'
 ON CONFLICT DO NOTHING;
 
--- 3. Insert Previous Published Draw (PRD § 06, § 07)
 INSERT INTO public.draws (
   draw_title,
   draw_month,
@@ -84,15 +77,15 @@ VALUES (
   'published',
   ARRAY[14, 27, 33, 38, 42],
   1380,
-  2484000, -- £24,840.00
+  2484000,
   0,
-  993600,  -- £9,936.00 (40%)
-  869400,  -- £8,694.00 (35%)
-  621000,  -- £6,210.00 (25%)
-  0,       -- 0 winners in Tier 5 -> rolled over!
-  3,       -- 3 winners in Tier 4
-  28,      -- 28 winners in Tier 3
-  true,    -- Jackpot rolled over
+  993600,
+  869400,
+  621000,
+  0,
+  3,
+  28,
+  true,
   '2026-09-30 20:00:00+00'
 )
 ON CONFLICT (draw_month) DO NOTHING;

@@ -10,8 +10,7 @@ describe('Admin 403 Authorization Mismatch & RBAC Guards (Regression Suite)', ()
     });
 
     it('REGRESSION FIX: authorizes an admin for subscriber-protected routes (e.g. /dashboard)', () => {
-      // Prior bug: ProtectedRoute checked `role !== requiredRole` ('admin' !== 'subscriber' -> true),
-      // which caused admins to be served a 403 Access Denied on /dashboard while header showed Admin.
+
       const authorized = isRoleAuthorized('admin', 'subscriber');
       expect(authorized).toBe(true);
     });
@@ -40,7 +39,7 @@ describe('Admin 403 Authorization Mismatch & RBAC Guards (Regression Suite)', ()
     });
 
     it('denies unrecognized or arbitrary roles from accessing protected routes', () => {
-      // Cast invalid role to simulate malformed client state or tampering
+
       const invalidRole = 'moderator' as unknown as UserRole;
       expect(isRoleAuthorized(invalidRole, 'admin')).toBe(false);
       expect(isRoleAuthorized(invalidRole, 'subscriber')).toBe(false);
@@ -56,22 +55,16 @@ describe('Admin 403 Authorization Mismatch & RBAC Guards (Regression Suite)', ()
         role: 'admin' as UserRole,
       };
 
-      // Header state calculation
       const role = profile.role;
       const isAdmin = role === 'admin';
       expect(isAdmin).toBe(true);
 
-      // Route guard checks for all platform routes:
-      // 1. Dashboard route
       const canAccessDashboard = isRoleAuthorized(role, 'subscriber');
       expect(canAccessDashboard).toBe(true);
 
-      // 2. Admin portal route
       const canAccessAdmin = isRoleAuthorized(role, 'admin');
       expect(canAccessAdmin).toBe(true);
 
-      // Invariant: An admin who sees the "Admin" badge in the navbar
-      // MUST NOT receive 403 on either /dashboard or /admin.
       expect(isAdmin && canAccessDashboard && canAccessAdmin).toBe(true);
     });
 
@@ -96,8 +89,7 @@ describe('Admin 403 Authorization Mismatch & RBAC Guards (Regression Suite)', ()
   });
 
   describe('Server-Side Admin Verification Invariant (public.is_admin simulation)', () => {
-    // Simulates database public.is_admin() check:
-    // SELECT EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+
     const simulateDatabaseIsAdmin = (
       authUid: string | null,
       profilesTable: Array<{ id: string; role: string }>
@@ -131,13 +123,11 @@ describe('Admin 403 Authorization Mismatch & RBAC Guards (Regression Suite)', ()
         return { total_users: 42, success: true };
       };
 
-      // Admin execution succeeds
       expect(callGetPlatformAnalyticsRpc('admin-uuid-1')).toEqual({
         total_users: 42,
         success: true,
       });
 
-      // Subscriber execution is strictly aborted with Unauthorized exception
       expect(() => callGetPlatformAnalyticsRpc('sub-uuid-2')).toThrow(
         'Unauthorized: Only platform administrators can access analytics.'
       );
@@ -148,7 +138,6 @@ describe('Admin 403 Authorization Mismatch & RBAC Guards (Regression Suite)', ()
     it('updates authorization decision when profile is refreshed after database promotion', async () => {
       let currentDatabaseRole: UserRole = 'subscriber';
 
-      // Mock user profile fetch from database
       const mockGetUserProfile = vi.fn().mockImplementation(async () => {
         return {
           id: 'upgraded-user-uuid',
@@ -158,18 +147,14 @@ describe('Admin 403 Authorization Mismatch & RBAC Guards (Regression Suite)', ()
         };
       });
 
-      // Initial state: user is subscriber
       let clientRole: UserRole = 'subscriber';
       expect(isRoleAuthorized(clientRole, 'admin')).toBe(false);
 
-      // Database role is changed to 'admin' (e.g. via bootstrap_initial_admin)
       currentDatabaseRole = 'admin';
 
-      // Client performs refreshProfile()
       const refreshedProfile = await mockGetUserProfile('upgraded-user-uuid');
       clientRole = refreshedProfile.role;
 
-      // Access is now successfully granted
       expect(isRoleAuthorized(clientRole, 'admin')).toBe(true);
       expect(mockGetUserProfile).toHaveBeenCalledTimes(1);
     });

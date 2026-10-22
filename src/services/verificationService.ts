@@ -1,14 +1,3 @@
-/**
- * GreenPulse Winner Verification & Proof Pipeline Service
- *
- * Handles:
- * 1. Proof file validation (allowed MIME types, file extensions, max file size 5MB).
- * 2. Secure non-guessable storage object path generation (preventing path traversal and collision).
- * 3. Claim lifecycle state machine validation (pending_proof -> under_review -> verified/rejected).
- * 4. Rejection note requirements.
- * 5. Payment boundary enforcement (verification does not trigger paid state; paid is decoupled).
- */
-
 import type { ClaimStatus } from '../types';
 
 export const ALLOWED_PROOF_MIME_TYPES = [
@@ -19,7 +8,6 @@ export const ALLOWED_PROOF_MIME_TYPES = [
 
 export const ALLOWED_PROOF_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp'] as const;
 
-// 5 MB maximum file size limit
 export const MAX_PROOF_FILE_SIZE_BYTES = 5 * 1024 * 1024;
 
 export interface FileValidationResult {
@@ -27,9 +15,6 @@ export interface FileValidationResult {
   error?: string;
 }
 
-/**
- * Validates scorecard screenshot file before upload.
- */
 export function validateProofFile(file: {
   name: string;
   size: number;
@@ -39,7 +24,6 @@ export function validateProofFile(file: {
     return { valid: false, error: 'No file provided.' };
   }
 
-  // 1. File size check
   if (file.size <= 0) {
     return { valid: false, error: 'File is empty.' };
   }
@@ -51,7 +35,6 @@ export function validateProofFile(file: {
     };
   }
 
-  // 2. MIME type check
   const mime = file.type.toLowerCase();
   const isAllowedMime = ALLOWED_PROOF_MIME_TYPES.some((m) => m === mime);
   if (!isAllowedMime) {
@@ -61,7 +44,6 @@ export function validateProofFile(file: {
     };
   }
 
-  // 3. Extension check
   const ext = file.name.split('.').pop()?.toLowerCase() || '';
   const isAllowedExt = ALLOWED_PROOF_EXTENSIONS.some((e) => e === ext);
   if (!isAllowedExt) {
@@ -74,17 +56,13 @@ export function validateProofFile(file: {
   return { valid: true };
 }
 
-/**
- * Generates a unique, non-guessable, path-traversal safe storage object path.
- * Format: {userId}/{claimId}-{randomUUID}.{ext}
- */
 export function generateSecureProofPath(
   userId: string,
   claimId: string,
   filename: string,
   uuidGenerator?: () => string
 ): string {
-  // Guard against path traversal attacks (.. or slashes in IDs)
+
   const sanitizeId = (id: string) => id.replace(/[^a-zA-Z0-9_-]/g, '');
   const cleanUserId = sanitizeId(userId);
   const cleanClaimId = sanitizeId(claimId);
@@ -107,9 +85,6 @@ export function generateSecureProofPath(
 
 export type ReviewDecision = 'under_review' | 'verified' | 'rejected';
 
-/**
- * Validates admin review decision and ensures mandatory rejection reason.
- */
 export function validateReviewDecision(params: {
   decision: ReviewDecision;
   rejectionReason?: string;
@@ -128,15 +103,12 @@ export function validateReviewDecision(params: {
   return { valid: true };
 }
 
-/**
- * Strict state machine transition validation for winner claims.
- */
 export function canTransitionClaimStatus(
   current: ClaimStatus,
   next: ClaimStatus,
   isAdmin: boolean
 ): boolean {
-  // Non-admins can only transition pending_proof/rejected -> under_review (via proof submission)
+
   if (!isAdmin) {
     if (
       (current === 'pending_proof' || current === 'rejected') &&
@@ -147,20 +119,19 @@ export function canTransitionClaimStatus(
     return false;
   }
 
-  // Admins can execute:
   switch (current) {
     case 'pending_proof':
       return next === 'under_review' || next === 'rejected';
     case 'under_review':
       return next === 'verified' || next === 'rejected';
     case 'verified':
-      // Cannot un-verify without review; paid transition requires payout integration
+
       return next === 'paid' || next === 'under_review';
     case 'rejected':
-      // Can be put under review again if golfer updated proof
+
       return next === 'under_review';
     case 'paid':
-      // Terminal state
+
       return false;
     default:
       return false;

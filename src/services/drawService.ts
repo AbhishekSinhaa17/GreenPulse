@@ -60,10 +60,6 @@ export const drawService = {
     return (data || []) as WinnerClaim[];
   },
 
-  /**
-   * Uploads scorecard screenshot to private Supabase Storage bucket 'winner-proofs'
-   * with validation and secure pathing, then transitions claim to 'under_review'.
-   */
   async submitWinnerProof(
     claimId: string,
     userId: string,
@@ -74,7 +70,6 @@ export const drawService = {
       throw new Error('Supabase is not configured. Real storage upload unavailable.');
     }
 
-    // 1. Client-side file validation (size, MIME type, extension)
     const validation = validateProofFile({
       name: file.name,
       size: file.size,
@@ -86,10 +81,8 @@ export const drawService = {
 
     const client = requireSupabase();
 
-    // 2. Generate non-guessable object path
     const filePath = generateSecureProofPath(userId, claimId, file.name);
 
-    // 3. Upload to private 'winner-proofs' bucket
     const { error: uploadError } = await client.storage
       .from('winner-proofs')
       .upload(filePath, file, {
@@ -102,7 +95,6 @@ export const drawService = {
       throw new Error(`Storage upload error: ${uploadError.message}`);
     }
 
-    // 4. Update claim record in database via canonical RPC
     const { data: rpcData, error: rpcErr } = await client.rpc('submit_winner_proof', {
       p_claim_id: claimId,
       p_proof_path: filePath,
@@ -120,10 +112,6 @@ export const drawService = {
     return { proofPath: filePath };
   },
 
-  /**
-   * Generates a short-lived authenticated signed URL to preview a private proof image.
-   * Enforces a maximum expiry of 300 seconds (5 minutes) to protect private golfer proof documents.
-   */
   async getProofSignedUrl(filePath: string, expiresInSeconds = 300): Promise<string | null> {
     if (!env.isSupabaseConfigured || !filePath) return null;
     try {

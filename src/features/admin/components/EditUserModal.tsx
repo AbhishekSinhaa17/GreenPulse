@@ -61,7 +61,6 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
       parsedHandicap = h;
     }
 
-    // Check self-demotion on frontend
     if (isSelf && editUserRole === 'subscriber') {
       warning('Action Blocked', 'Self-demotion is prohibited. You cannot remove your own administrator status.');
       return;
@@ -342,7 +341,6 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
           }
         `}</style>
 
-        {/* Identity Header */}
         <div className="eu-identity-header">
           <span className="eu-avatar">{getInitials(editUserName || userToEdit.email || 'U')}</span>
           <div>
@@ -351,7 +349,6 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
           </div>
         </div>
 
-        {/* Basic Info */}
         <div className="eu-section">
           <div>
             <label className="eu-field-label">
@@ -407,7 +404,6 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
           </div>
         </div>
 
-        {/* Role Selector */}
         <div className="eu-section">
           <label className="eu-field-label">
             <ShieldCheck size={13} /> Platform Role

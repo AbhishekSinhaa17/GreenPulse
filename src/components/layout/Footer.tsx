@@ -10,7 +10,7 @@ export const Footer: React.FC = () => {
       <div className="gp-footer-glow" aria-hidden="true" />
       <div className="container">
         <div className="gp-footer-grid">
-          {/* Brand & Mission */}
+
           <div className="gp-footer-brand">
             <div className="flex items-center gap-3 gp-brand-row">
               <div className="gp-brand-mark">
@@ -29,7 +29,6 @@ export const Footer: React.FC = () => {
             </div>
           </div>
 
-          {/* Quick Links */}
           <div className="gp-footer-col">
             <h4 className="gp-col-title">Platform</h4>
             <ul className="gp-link-list">
@@ -56,7 +55,6 @@ export const Footer: React.FC = () => {
             </ul>
           </div>
 
-          {/* Golfer Portal */}
           <div className="gp-footer-col">
             <h4 className="gp-col-title">Golfer Workspace</h4>
             <ul className="gp-link-list">
@@ -83,7 +81,6 @@ export const Footer: React.FC = () => {
             </ul>
           </div>
 
-          {/* Trust & Compliance */}
           <div className="gp-footer-col">
             <h4 className="gp-col-title">Trust &amp; Integrity</h4>
             <p className="gp-trust-desc">
@@ -104,7 +101,6 @@ export const Footer: React.FC = () => {
           </div>
         </div>
 
-        {/* Bottom copyright */}
         <div className="gp-footer-bottom flex flex-col md-flex-row justify-between items-center gap-4">
           <div className="gp-copyright">
             © {currentYear} GreenPulse Platform Ltd. All rights reserved.

@@ -4,7 +4,7 @@ import type { UserProfile, UserRole, Subscription } from '../src/types';
 import { simulateDraw, evaluateTicket } from '../src/services/drawEngine';
 
 describe('Role-Based Admin Experience & Navigation Regression Suite', () => {
-  // Helper simulating the redirect logic in AuthPage.tsx
+
   const resolveLoginRedirect = (
     profile: { role: UserRole } | null,
     fromPath?: string
@@ -26,7 +26,6 @@ describe('Role-Based Admin Experience & Navigation Regression Suite', () => {
     return { target: destination, welcomeMessage };
   };
 
-  // Helper simulating the OAuth callback redirect logic in AuthCallbackPage.tsx
   const resolveOAuthCallbackRedirect = (
     profile: { role: UserRole; full_name?: string }
   ): { destination: string; welcomeName: string } => {
@@ -36,7 +35,6 @@ describe('Role-Based Admin Experience & Navigation Regression Suite', () => {
     return { destination, welcomeName };
   };
 
-  // Helper simulating DashboardPage role guard
   const evaluateDashboardAccess = (
     role: UserRole | null,
     isLoading: boolean
@@ -46,9 +44,6 @@ describe('Role-Based Admin Experience & Navigation Regression Suite', () => {
     return { action: 'render_golfer' };
   };
 
-  // -------------------------------------------------------------------------
-  // 1. Admin login redirects directly to the admin portal
-  // -------------------------------------------------------------------------
   describe('1. Admin Login Redirects', () => {
     it('redirects an admin directly to /admin when logging in from default route', () => {
       const adminProfile = { role: 'admin' as UserRole };
@@ -75,9 +70,8 @@ describe('Role-Based Admin Experience & Navigation Regression Suite', () => {
         return profile.role === 'admin' ? '/admin' : '/dashboard';
       };
 
-      // During session loading: role is unresolved
       expect(checkPrematureRedirect(true, null)).toBeNull();
-      // After session finishes loading with admin profile
+
       const loadedProfile: UserProfile = {
         id: 'adm-1',
         email: 'admin@greenpulse.org',
@@ -89,9 +83,6 @@ describe('Role-Based Admin Experience & Navigation Regression Suite', () => {
     });
   });
 
-  // -------------------------------------------------------------------------
-  // 2. Subscriber/golfer login redirects to user dashboard
-  // -------------------------------------------------------------------------
   describe('2. Subscriber/Golfer Login Redirects', () => {
     it('redirects a normal golfer directly to /dashboard on login', () => {
       const golferProfile = { role: 'subscriber' as UserRole };
@@ -103,7 +94,7 @@ describe('Role-Based Admin Experience & Navigation Regression Suite', () => {
     it('prevents a golfer from being redirected to an admin route if from was /admin', () => {
       const golferProfile = { role: 'subscriber' as UserRole };
       const result = resolveLoginRedirect(golferProfile, '/admin');
-      expect(result.target).toBe('/dashboard'); // Safely re-routed to golfer dashboard
+      expect(result.target).toBe('/dashboard');
     });
 
     it('allows a golfer to return to safe non-admin routes (e.g. /charities or /draws)', () => {
@@ -113,18 +104,14 @@ describe('Role-Based Admin Experience & Navigation Regression Suite', () => {
     });
   });
 
-  // -------------------------------------------------------------------------
-  // 3. Free platform access for administrators
-  // -------------------------------------------------------------------------
   describe('3. Administrator Free Platform Access (No Subscription Required)', () => {
     it('allows an administrator without any subscription record to operate the platform', () => {
-      // Simulate admin profile with null subscription
-      const adminUser = { id: 'admin-uuid', role: 'admin' as UserRole };
-      const adminSubscription: Subscription | null = null; // No subscription record
 
-      // Access control rule: Admin features do not depend on subscription
+      const adminUser = { id: 'admin-uuid', role: 'admin' as UserRole };
+      const adminSubscription: Subscription | null = null;
+
       const canAccessAdminOperations = (userRole: UserRole, sub: Subscription | null): boolean => {
-        if (userRole === 'admin') return true; // Complimentary platform access
+        if (userRole === 'admin') return true;
         return sub?.status === 'active';
       };
 
@@ -159,7 +146,7 @@ describe('Role-Based Admin Experience & Navigation Regression Suite', () => {
 
     it('does not alter or fabricate subscription records for admin accounts', () => {
       const checkAdminSubscriptionRecord = (databaseRow: Subscription | null): Subscription | null => {
-        // Invariant: Do not fabricate a fake subscription row in the database
+
         return databaseRow;
       };
 
@@ -167,9 +154,6 @@ describe('Role-Based Admin Experience & Navigation Regression Suite', () => {
     });
   });
 
-  // -------------------------------------------------------------------------
-  // 4. Regular users cannot access admin routes or admin operations
-  // -------------------------------------------------------------------------
   describe('4. Strict Route & Operation Guards for Non-Admins', () => {
     it('strictly blocks subscribers from accessing the admin route guard', () => {
       expect(isRoleAuthorized('subscriber', 'admin')).toBe(false);
@@ -215,19 +199,16 @@ describe('Role-Based Admin Experience & Navigation Regression Suite', () => {
     });
   });
 
-  // -------------------------------------------------------------------------
-  // 5. Refreshed admin session remains on the correct route
-  // -------------------------------------------------------------------------
   describe('5. Session Refresh & Direct Access Invariants', () => {
     it('retains the /admin route when an admin refreshes their browser', () => {
-      // Simulating ProtectedRoute behavior on /admin with verified admin role
+
       const currentRoute = '/admin';
       const role: UserRole = 'admin';
       const requiredRole = 'admin';
 
       const isAuthorized = isRoleAuthorized(role, requiredRole);
       expect(isAuthorized).toBe(true);
-      // Because isAuthorized is true, no redirect to /dashboard or /login occurs
+
       const finalDestination = isAuthorized ? currentRoute : '/login';
       expect(finalDestination).toBe('/admin');
     });
@@ -248,9 +229,6 @@ describe('Role-Based Admin Experience & Navigation Regression Suite', () => {
     });
   });
 
-  // -------------------------------------------------------------------------
-  // 6. OAuth callback role resolution
-  // -------------------------------------------------------------------------
   describe('6. OAuth Callback Role Resolution', () => {
     it('redirects admin OAuth user directly to /admin with administrator greeting', () => {
       const adminOAuthUser = {
@@ -276,18 +254,15 @@ describe('Role-Based Admin Experience & Navigation Regression Suite', () => {
 
     it('ensures OAuth user metadata cannot tamper with database role', () => {
       const untrustedOAuthPayload = {
-        user_metadata: { role: 'admin' }, // Untrusted payload
+        user_metadata: { role: 'admin' },
       };
-      // Invariant: ensureUserProfile strictly queries/upserts role from DB/trigger, ignoring user_metadata.role
+
       const provisionedRole: UserRole = 'subscriber';
       expect(provisionedRole).toBe('subscriber');
       expect(provisionedRole).not.toBe(untrustedOAuthPayload.user_metadata.role);
     });
   });
 
-  // -------------------------------------------------------------------------
-  // 7. Normal subscription and golfer workflows remain unchanged
-  // -------------------------------------------------------------------------
   describe('7. Unchanged Golfer & Subscription Workflows', () => {
     it('allows golfers to submit scores within 1-45 Stableford limits', () => {
       const validateScore = (score: number) => score >= 1 && score <= 45;
@@ -319,9 +294,6 @@ describe('Role-Based Admin Experience & Navigation Regression Suite', () => {
     });
   });
 
-  // -------------------------------------------------------------------------
-  // 8. Existing admin functions, draw engine, and claim authorization intact
-  // -------------------------------------------------------------------------
   describe('8. Admin Operations, Draw Simulation & Claims Verification Intact', () => {
     it('executes draw simulation with PRD tier allocation and rollover', () => {
       const sim = simulateDraw({
@@ -336,7 +308,7 @@ describe('Role-Based Admin Experience & Navigation Regression Suite', () => {
         carriedOverJackpotCents: 250000,
       });
 
-      expect(sim.prizeAllocation.tier5.potCents).toBe(400000 + 250000); // 40% + £2.5k rollover
+      expect(sim.prizeAllocation.tier5.potCents).toBe(400000 + 250000);
       expect(sim.prizeAllocation.tier4.potCents).toBe(350000);
       expect(sim.prizeAllocation.tier3.potCents).toBe(250000);
       expect(sim.winningNumbers.length).toBe(5);

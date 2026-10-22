@@ -13,7 +13,6 @@ describe('Phase 8: Final Integration & Security Audit Invariants', () => {
         },
       };
 
-      // Invariant: client/OAuth user metadata cannot escalate role
       const sanitizedRole = 'subscriber';
       expect(sanitizedRole).toBe('subscriber');
       expect(sanitizedRole).not.toBe(maliciousPayload.user_metadata.role);
@@ -26,7 +25,7 @@ describe('Phase 8: Final Integration & Security Audit Invariants', () => {
 
       const checkSelfDemotion = (adminId: string, userId: string, newRole: string): boolean => {
         if (adminId === userId && newRole === 'subscriber') {
-          return false; // Prohibited
+          return false;
         }
         return true;
       };
@@ -96,7 +95,7 @@ describe('Phase 8: Final Integration & Security Audit Invariants', () => {
       expect(updatedList.length).toBe(5);
       expect(updatedList[0].score).toBe(42);
       expect(updatedList[4].score).toBe(38);
-      expect(updatedList.some((s) => s.score === 36)).toBe(false); // Oldest score dropped
+      expect(updatedList.some((s) => s.score === 36)).toBe(false);
     });
   });
 
@@ -134,8 +133,8 @@ describe('Phase 8: Final Integration & Security Audit Invariants', () => {
 
   describe('4. Draw Engine Verification & Rollover Invariants (PRD § 06 & § 07)', () => {
     it('allocates prize pool strictly according to PRD 40/35/25 split with rollover carryover', () => {
-      const totalPoolCents = 1000000; // £10,000
-      const rolloverSeedCents = 500000; // £5,000 prior rollover
+      const totalPoolCents = 1000000;
+      const rolloverSeedCents = 500000;
 
       const sim = simulateDraw({
         drawMonth: '2026-10-01',
@@ -148,9 +147,9 @@ describe('Phase 8: Final Integration & Security Audit Invariants', () => {
         carriedOverJackpotCents: rolloverSeedCents,
       });
 
-      expect(sim.prizeAllocation.tier5.potCents).toBe(400000 + 500000); // 40% + £5k rollover
-      expect(sim.prizeAllocation.tier4.potCents).toBe(350000); // 35%
-      expect(sim.prizeAllocation.tier3.potCents).toBe(250000); // 25%
+      expect(sim.prizeAllocation.tier5.potCents).toBe(400000 + 500000);
+      expect(sim.prizeAllocation.tier4.potCents).toBe(350000);
+      expect(sim.prizeAllocation.tier3.potCents).toBe(250000);
       expect(sim.prizeAllocation.totalPrizePoolCents).toBe(totalPoolCents);
       expect(sim.winningNumbers.length).toBe(5);
     });
@@ -203,8 +202,7 @@ describe('Phase 8: Final Integration & Security Audit Invariants', () => {
     });
 
     it('keeps verification state decoupled from payout execution (Phase 4 pause boundary)', () => {
-      // PRD § 09 & Phase 4 rule:
-      // Approving proof sets status to 'verified', NEVER directly to 'paid'
+
       const advanceProofDecision = (decision: 'under_review' | 'verified' | 'rejected') => {
         if (decision === 'verified') {
           return { status: 'verified', payoutReleased: false };

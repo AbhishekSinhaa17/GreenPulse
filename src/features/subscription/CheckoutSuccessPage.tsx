@@ -22,7 +22,7 @@ import {
 export const CheckoutSuccessPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const sessionId = searchParams.get('session_id');
-  const checkoutType = searchParams.get('type'); // 'donation' or null (subscription)
+  const checkoutType = searchParams.get('type');
   const isDemo = searchParams.get('demo') === 'true';
   const planParam = (searchParams.get('plan') as 'monthly' | 'yearly') || 'monthly';
 
@@ -39,10 +39,8 @@ export const CheckoutSuccessPage: React.FC = () => {
 
   const confettiFired = useRef(false);
 
-  // Authoritative status verification against PostgreSQL database
-  // (Never trust the URL query string alone as proof of payment!)
   const verifyAuthoritativeStatus = useCallback(async () => {
-    // 1. Handle Demo Mode Immediately
+
     if (isDemo) {
       if (user?.id) {
         try {
@@ -63,7 +61,7 @@ export const CheckoutSuccessPage: React.FC = () => {
             });
           }
         } catch {
-          // fallback to display representation
+
         }
       }
       setIsConfirmed(true);
@@ -84,7 +82,7 @@ export const CheckoutSuccessPage: React.FC = () => {
       const client = requireSupabase();
 
       if (checkoutType === 'donation') {
-        // Query donation_ledger for verified payment matching stripe_session_id
+
         if (sessionId) {
           const { data, error } = await client
             .from('donation_ledger')
@@ -104,7 +102,7 @@ export const CheckoutSuccessPage: React.FC = () => {
           }
         }
       } else {
-        // Query user's actual subscription status in PostgreSQL
+
         if (user?.id) {
           const sub = await subscriptionService.getUserSubscription(user.id);
           if (sub && sub.status === 'active') {
@@ -123,19 +121,16 @@ export const CheckoutSuccessPage: React.FC = () => {
       console.warn('[CheckoutSuccessPage] Verification polling error:', err);
     }
 
-    // Still awaiting webhook processing
     setPollCount((prev) => prev + 1);
   }, [checkoutType, isDemo, planParam, sessionId, user]);
 
   useEffect(() => {
     let timeoutId: ReturnType<typeof setTimeout>;
 
-    // Initial check via microtask to avoid synchronous setState inside effect
     queueMicrotask(() => {
       verifyAuthoritativeStatus();
     });
 
-    // Poll every 3 seconds for up to 5 attempts (15 seconds)
     if (!isConfirmed && pollCount < 5) {
       timeoutId = setTimeout(() => {
         verifyAuthoritativeStatus();

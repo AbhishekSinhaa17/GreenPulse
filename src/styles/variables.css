@@ -1,10 +1,5 @@
 :root {
-  /* ==========================================================================
-     GreenPulse Design System Tokens
-     Theme: Premium Editorial, Warm Cream, Forest Green, Muted Lime & Charcoal
-     ========================================================================== */
 
-  /* Palette - Warm Cream Grounds */
   --bg-primary: #FBF9F4;
   --bg-surface: #FFFFFF;
   --bg-surface-warm: #F6F2E8;
@@ -13,7 +8,6 @@
   --bg-surface-subtle: #FAF6ED;
   --bg-overlay: rgba(18, 36, 27, 0.45);
 
-  /* Palette - Forest Green Identity */
   --forest-950: #07150E;
   --forest-900: #0C2117;
   --forest-850: #102B1E;
@@ -25,7 +19,6 @@
   --forest-100: #E3EFE9;
   --forest-50:  #F0F7F4;
 
-  /* Palette - Muted Lime Accent */
   --lime-600: #788C29;
   --lime-500: #8EA633;
   --lime-400: #A6C03F;
@@ -34,7 +27,6 @@
   --lime-100: #EEF6DA;
   --lime-50:  #F7FBEC;
 
-  /* Palette - Charcoal & Ink */
   --charcoal-950: #111412;
   --charcoal-900: #181C19;
   --charcoal-800: #242B26;
@@ -46,7 +38,6 @@
   --charcoal-200: #D0D8D4;
   --charcoal-100: #E6EBE8;
 
-  /* Functional Text & Content */
   --text-primary: var(--charcoal-950);
   --text-secondary: var(--charcoal-600);
   --text-muted: var(--charcoal-500);
@@ -55,14 +46,12 @@
   --text-forest: var(--forest-800);
   --text-lime: var(--lime-600);
 
-  /* Borders & Dividers */
   --border-subtle: rgba(20, 53, 37, 0.08);
   --border-default: rgba(20, 53, 37, 0.14);
   --border-strong: rgba(20, 53, 37, 0.24);
   --border-focus: var(--forest-800);
   --border-lime: var(--lime-500);
 
-  /* Status Colors */
   --color-success: #287C4F;
   --color-success-bg: #E8F5ED;
   --color-success-border: #A6DDC0;
@@ -76,38 +65,34 @@
   --color-info-bg: #EDF6FC;
   --color-info-border: #ACD5F3;
 
-  /* Typography */
   --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-editorial: 'Fraunces', Georgia, 'Times New Roman', serif;
   --font-numeric: 'Space Grotesk', var(--font-sans);
 
-  /* Font Scales */
-  --text-xs: 0.75rem;    /* 12px */
-  --text-sm: 0.875rem;   /* 14px */
-  --text-base: 1rem;     /* 16px */
-  --text-lg: 1.125rem;   /* 18px */
-  --text-xl: 1.25rem;    /* 20px */
-  --text-2xl: 1.5rem;    /* 24px */
-  --text-3xl: 1.875rem;  /* 30px */
-  --text-4xl: 2.25rem;   /* 36px */
-  --text-5xl: 3rem;      /* 48px */
-  --text-6xl: 3.75rem;   /* 60px */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2.25rem;
+  --text-5xl: 3rem;
+  --text-6xl: 3.75rem;
 
-  /* Spacing Scale */
-  --space-1: 0.25rem;    /* 4px */
-  --space-2: 0.5rem;     /* 8px */
-  --space-3: 0.75rem;    /* 12px */
-  --space-4: 1rem;       /* 16px */
-  --space-5: 1.25rem;    /* 20px */
-  --space-6: 1.5rem;     /* 24px */
-  --space-8: 2rem;       /* 32px */
-  --space-10: 2.5rem;    /* 40px */
-  --space-12: 3rem;      /* 48px */
-  --space-16: 4rem;      /* 64px */
-  --space-20: 5rem;      /* 80px */
-  --space-24: 6rem;      /* 96px */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-20: 5rem;
+  --space-24: 6rem;
 
-  /* Border Radii */
   --radius-xs: 4px;
   --radius-sm: 8px;
   --radius-md: 12px;
@@ -115,28 +100,24 @@
   --radius-xl: 28px;
   --radius-full: 9999px;
 
-  /* Shadows (Natural Diffuse) */
   --shadow-xs: 0 1px 2px rgba(18, 36, 27, 0.04);
   --shadow-sm: 0 2px 6px rgba(18, 36, 27, 0.06), 0 1px 2px rgba(18, 36, 27, 0.04);
   --shadow-md: 0 8px 24px rgba(18, 36, 27, 0.08), 0 2px 6px rgba(18, 36, 27, 0.04);
   --shadow-lg: 0 16px 40px rgba(18, 36, 27, 0.10), 0 4px 12px rgba(18, 36, 27, 0.05);
   --shadow-float: 0 24px 64px rgba(18, 36, 27, 0.14), 0 8px 20px rgba(18, 36, 27, 0.06);
 
-  /* Transitions & Easing */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
   --transition-fast: 150ms var(--ease-out);
   --transition-base: 220ms var(--ease-out);
   --transition-smooth: 350ms var(--ease-out);
 
-  /* Layout Max Widths */
   --container-sm: 640px;
   --container-md: 840px;
   --container-lg: 1080px;
   --container-xl: 1280px;
   --container-wide: 1440px;
 
-  /* Z-Index Hierarchy */
   --z-base: 1;
   --z-dropdown: 100;
   --z-sticky: 200;

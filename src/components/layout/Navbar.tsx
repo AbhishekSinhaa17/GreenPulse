@@ -37,7 +37,7 @@ export const Navbar: React.FC = () => {
         className="container flex items-center justify-between"
         style={{ height: "76px" }}
       >
-        {/* Brand Logo */}
+
         <Link to="/" className="flex items-center gap-3 gp-nav-brand">
           <div className="gp-nav-logo">
             <span>G</span>
@@ -50,7 +50,6 @@ export const Navbar: React.FC = () => {
           </div>
         </Link>
 
-        {/* Desktop Navigation */}
         <nav className="desktop-nav gp-nav-links">
           {navLinks.map((link) => {
             const isActive =
@@ -69,7 +68,6 @@ export const Navbar: React.FC = () => {
           })}
         </nav>
 
-        {/* Action CTAs & Auth Awareness */}
         <div
           style={{
             display: "flex",
@@ -171,7 +169,6 @@ export const Navbar: React.FC = () => {
         </div>
       </div>
 
-      {/* Mobile Backdrop & Drawer */}
       {mobileMenuOpen && (
         <>
           <div

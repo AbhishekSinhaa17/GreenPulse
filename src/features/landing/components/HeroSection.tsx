@@ -17,13 +17,6 @@ import { ScoreBall } from "../../../components/ui/ScoreBall";
 import { useToast } from "../../../context/ToastContext";
 import { useAuth } from "../../../hooks/useAuth";
 
-
-
-
-/* -------------------------------------------------------------------------- */
-/*  Animation Variants                                                        */
-/* -------------------------------------------------------------------------- */
-
 const containerVariants: Variants = {
   hidden: {},
   visible: {
@@ -46,10 +39,6 @@ const floatAnim = (delay = 0) => ({
     transition: { duration: 6, repeat: Infinity, ease: "easeInOut" as const, delay },
   },
 });
-
-/* -------------------------------------------------------------------------- */
-/*  Animated Counter                                                          */
-/* -------------------------------------------------------------------------- */
 
 const AnimatedCounter: React.FC<{
   end: number;
@@ -85,10 +74,6 @@ const AnimatedCounter: React.FC<{
     </span>
   );
 };
-
-/* -------------------------------------------------------------------------- */
-/*  Hero Section                                                              */
-/* -------------------------------------------------------------------------- */
 
 export const HeroSection: React.FC = () => {
   const { success } = useToast();
@@ -127,9 +112,7 @@ export const HeroSection: React.FC = () => {
         paddingBottom: "var(--space-16)",
       }}
     >
-      {/* ---------------------------------------------------------------- */}
-      {/* Decorative animated background                                   */}
-      {/* ---------------------------------------------------------------- */}
+
       <div
         aria-hidden
         style={{
@@ -283,7 +266,6 @@ export const HeroSection: React.FC = () => {
             </Link>
           </motion.div>
 
-          {/* Stats row */}
           <motion.div
             variants={fadeUp}
             style={{
@@ -337,9 +319,6 @@ export const HeroSection: React.FC = () => {
           </motion.div>
         </motion.div>
 
-        {/* ------------------------------------------------------------ */}
-        {/* Interactive Draw Teaser Card                                  */}
-        {/* ------------------------------------------------------------ */}
         <motion.div
           initial={{ opacity: 0, y: 32 }}
           animate={{ opacity: 1, y: 0 }}
@@ -361,7 +340,7 @@ export const HeroSection: React.FC = () => {
                 overflow: "hidden",
               }}
             >
-              {/* subtle shimmer accent */}
+
               <motion.div
                 aria-hidden
                 animate={{ x: ["-30%", "130%"] }}
@@ -429,7 +408,6 @@ export const HeroSection: React.FC = () => {
                   </p>
                 </div>
 
-                {/* Score Balls Demonstration */}
                 <div
                   style={{
                     display: "flex",

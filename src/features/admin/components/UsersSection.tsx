@@ -60,7 +60,6 @@ export const UsersSection: React.FC<UsersSectionProps> = ({
   const [userCurrentPage, setUserCurrentPage] = useState(1);
   const usersPerPage = 8;
 
-  // Modals state
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
   const [inspectUser, setInspectUser] = useState<UserProfile | null>(null);
 
@@ -423,7 +422,7 @@ export const UsersSection: React.FC<UsersSectionProps> = ({
       `}</style>
 
       <Card padding="none" className="us-card">
-        {/* Filter and Search Bar */}
+
         <div className="us-toolbar">
           <div>
             <div className="us-title-row">
@@ -511,7 +510,6 @@ export const UsersSection: React.FC<UsersSectionProps> = ({
           </div>
         </div>
 
-        {/* Users Table */}
         {filteredUsers.length === 0 ? (
           <div className="us-empty-state">
             <span className="us-empty-icon">
@@ -647,7 +645,6 @@ export const UsersSection: React.FC<UsersSectionProps> = ({
           </div>
         )}
 
-        {/* Pagination Controls */}
         {filteredUsers.length > usersPerPage && (
           <div className="us-pagination">
             <span className="us-pagination-info">
@@ -684,7 +681,6 @@ export const UsersSection: React.FC<UsersSectionProps> = ({
         )}
       </Card>
 
-      {/* Payment Boundary Advisory */}
       <div className="us-advisory">
         <ShieldAlert size={18} />
         <div>
@@ -698,7 +694,6 @@ export const UsersSection: React.FC<UsersSectionProps> = ({
         </div>
       </div>
 
-      {/* Modals */}
       {editingUser && (
         <EditUserModal
           key={editingUser.id}

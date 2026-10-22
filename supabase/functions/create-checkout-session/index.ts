@@ -1,7 +1,3 @@
-// Follow this setup guide to integrate the Deno language server with your editor:
-// https://deno.land/manual/getting_started/setup_your_environment
-// This code runs in Supabase Edge Functions (Deno runtime)
-
 import Stripe from 'npm:stripe@^17.0.0';
 import { createClient } from 'npm:@supabase/supabase-js@^2.39.0';
 
@@ -12,13 +8,12 @@ export const corsHeaders = {
 };
 
 export function resolveSafeAppUrl(originHeader: string | null): string {
-  // 1. Explicitly configured canonical application URL takes strict precedence
+
   const configuredAppUrl = Deno.env.get('CLIENT_APP_URL') || Deno.env.get('VITE_APP_URL');
   if (configuredAppUrl) {
     return configuredAppUrl.replace(/\/$/, '');
   }
 
-  // 2. If origin header is supplied, validate against trusted hostname whitelist
   if (originHeader) {
     try {
       const parsed = new URL(originHeader);
@@ -28,16 +23,15 @@ export function resolveSafeAppUrl(originHeader: string | null): string {
         return originHeader.replace(/\/$/, '');
       }
     } catch {
-      // Invalid URL format
+
     }
   }
 
-  // 3. Fallback safe default
   return 'http://localhost:5173';
 }
 
 Deno.serve(async (req: Request) => {
-  // 1. Handle CORS Preflight
+
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -63,26 +57,20 @@ Deno.serve(async (req: Request) => {
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 
-    // Initialize authenticated Supabase client to verify caller identity
     const authHeader = req.headers.get('Authorization');
     const supabaseUserClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader || '' } },
     });
 
-    // Trusted admin client for verifying DB constraints without client bypass
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Parse payload
     const body = await req.json().catch(() => ({}));
     const { mode, planTier, charityId, charityPercentage, amountCents } = body;
 
     const appUrl = resolveSafeAppUrl(req.headers.get('origin'));
 
-    // =========================================================================
-    // MODE A: MEMBERSHIP SUBSCRIPTION CHECKOUT (§ 01, § 04, § 08)
-    // =========================================================================
     if (mode === 'subscription') {
-      // 1. Authenticate user from session token
+
       if (!authHeader) {
         return new Response(
           JSON.stringify({ error: 'Authentication required. Authorization header missing.' }),
@@ -98,7 +86,6 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      // 2. Validate plan tier
       if (planTier !== 'monthly' && planTier !== 'yearly') {
         return new Response(
           JSON.stringify({ error: 'Invalid plan tier. Must be "monthly" or "yearly".' }),
@@ -106,7 +93,6 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      // 3. Prevent duplicate active subscriptions (§ 04)
       const { data: activeSub, error: subError } = await supabaseAdmin
         .from('subscriptions')
         .select('id, status, plan_tier')
@@ -128,7 +114,6 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      // 4. Validate charity and minimum 10% pledge requirement (§ 08.1)
       let validatedCharityId = charityId;
       const pledge = typeof charityPercentage === 'number' ? charityPercentage : 10;
       if (pledge < 10 || pledge > 100) {
@@ -147,7 +132,7 @@ Deno.serve(async (req: Request) => {
           .maybeSingle();
 
         if (!charityRow) {
-          // Fallback to first available active (non-archived) charity if invalid/archived ID provided
+
           const { data: fallbackCharity } = await supabaseAdmin
             .from('charities')
             .select('id')
@@ -158,9 +143,6 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      // 5. Derive Stripe Price (Minor Currency Units: Paise)
-      // Monthly: ₹2,090.00 INR (209000 paise)
-      // Yearly: ₹20,900.00 INR (2090000 paise - includes 2 months free discount)
       const configuredPriceId =
         planTier === 'yearly'
           ? Deno.env.get('STRIPE_PRICE_YEARLY')
@@ -188,7 +170,6 @@ Deno.serve(async (req: Request) => {
         ];
       }
 
-      // 6. Create Stripe Checkout Session
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ['card'],
         mode: 'subscription',
@@ -220,9 +201,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // =========================================================================
-    // MODE B: STANDALONE CHARITY DONATION CHECKOUT (§ 08.1)
-    // =========================================================================
     if (mode === 'donation') {
       if (!charityId) {
         return new Response(
@@ -231,7 +209,6 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      // 1. Validate charity exists and is active (not archived) in database
       const { data: charity, error: charityErr } = await supabaseAdmin
         .from('charities')
         .select('id, name, slug, is_archived')
@@ -246,7 +223,6 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      // 2. Validate donation amount on the server (explicit paise units)
       const amount = Number(amountCents);
       if (!Number.isInteger(amount) || amount < 11000 || amount > 110000000) {
         return new Response(
@@ -255,7 +231,6 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      // 3. Resolve user identity if authenticated (optional for guest donations)
       let donorUserId: string | null = null;
       let donorEmail: string | undefined = undefined;
       if (authHeader) {
@@ -266,7 +241,6 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      // 4. Create hosted Checkout Session for one-time donation
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ['card'],
         mode: 'payment',

@@ -40,7 +40,6 @@ export const SubscriptionPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
-  // 1. Fetch user's existing subscription to prevent duplicates
   useEffect(() => {
     let isMounted = true;
     if (isAuthenticated && user?.id) {
@@ -66,7 +65,6 @@ export const SubscriptionPage: React.FC = () => {
     };
   }, [isAuthenticated, user?.id]);
 
-  // 2. Fetch Charities directory for beneficiary selection
   useEffect(() => {
     let isMounted = true;
     queueMicrotask(() => setIsLoadingCharities(true));
@@ -89,7 +87,6 @@ export const SubscriptionPage: React.FC = () => {
     };
   }, []);
 
-  // 3. Handle Checkout Session Creation
   const handleProceedToCheckout = async () => {
     setCheckoutError(null);
 
@@ -114,7 +111,6 @@ export const SubscriptionPage: React.FC = () => {
 
     setIsSubmitting(true);
 
-    // Simulated Demo Payment Mode (Evaluation & Recruitment Preview)
     if (env.demoPayments) {
       try {
         const sub = await subscriptionService.activateDemoSubscription(
@@ -135,7 +131,6 @@ export const SubscriptionPage: React.FC = () => {
       return;
     }
 
-    // Canonical Real Stripe Checkout Flow
     try {
       const result = await stripeService.createSubscriptionCheckout(
         plan,
@@ -143,7 +138,6 @@ export const SubscriptionPage: React.FC = () => {
         charityPercentage,
       );
 
-      // Redirect browser to hosted Stripe Checkout URL
       if (result.url) {
         window.location.assign(result.url);
       } else {
@@ -169,7 +163,7 @@ export const SubscriptionPage: React.FC = () => {
   return (
     <PageContainer>
       <div className="sp-wrapper">
-        {/* Header */}
+
         <div className="sp-hero">
           <Badge variant="lime" className="sp-hero-badge">
             <Sparkles size={12} />
@@ -185,7 +179,6 @@ export const SubscriptionPage: React.FC = () => {
           </p>
         </div>
 
-        {/* Demo Payment Mode Notice Banner */}
         {env.demoPayments && (
           <div
             className="sp-demo-banner"
@@ -257,7 +250,6 @@ export const SubscriptionPage: React.FC = () => {
           </div>
         )}
 
-        {/* Existing Active Subscription Banner */}
         {!isCheckingSub && activeSubscription && (
           <div className="sp-active-banner">
             <div className="sp-active-left">
@@ -308,7 +300,6 @@ export const SubscriptionPage: React.FC = () => {
           </div>
         )}
 
-        {/* Step 1: Choose Your Membership Plan */}
         <div className="sp-step">
           <h3 className="sp-step-title">
             <span className="sp-step-num">1</span>
@@ -316,7 +307,7 @@ export const SubscriptionPage: React.FC = () => {
           </h3>
 
           <div className="sp-plan-grid">
-            {/* Monthly Plan Card */}
+
             <div
               onClick={() => setPlan("monthly")}
               className={`sp-plan-card ${plan === "monthly" ? "sp-plan-active" : ""}`}
@@ -354,7 +345,6 @@ export const SubscriptionPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Yearly Plan Card */}
             <div
               onClick={() => setPlan("yearly")}
               className={`sp-plan-card ${plan === "yearly" ? "sp-plan-active" : ""}`}
@@ -399,7 +389,6 @@ export const SubscriptionPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Step 2: Choose Your Cause & Impact Pledge */}
         <Card className="sp-charity-card">
           <div className="sp-charity-head">
             <div className="sp-charity-icon-badge">
@@ -415,7 +404,6 @@ export const SubscriptionPage: React.FC = () => {
             voluntarily increase this proportion.
           </p>
 
-          {/* Charity Selection Dropdown / Selector */}
           <div className="sp-field-block">
             <label htmlFor="charity-select" className="sp-field-label">
               Choose Partner Charity
@@ -448,7 +436,6 @@ export const SubscriptionPage: React.FC = () => {
             )}
           </div>
 
-          {/* Percentage Slider (min 10%, max 100%) */}
           <div className="sp-field-block">
             <div className="sp-slider-head">
               <label
@@ -489,7 +476,6 @@ export const SubscriptionPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Transparent Allocation Breakdown */}
           <div className="sp-breakdown">
             <div className="sp-breakdown-title">
               Transparent Allocation Breakdown (
@@ -519,7 +505,6 @@ export const SubscriptionPage: React.FC = () => {
           </div>
         </Card>
 
-        {/* Action Button & Security Assurance */}
         <div className="sp-action">
           {isAuthenticated ? (
             isAdmin || role === "admin" ? (

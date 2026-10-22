@@ -12,10 +12,6 @@ import {
 import { Card } from "../../../components/ui/Card";
 import { Badge } from "../../../components/ui/Badge";
 
-/* -------------------------------------------------------------------------- */
-/*  Types & Data                                                              */
-/* -------------------------------------------------------------------------- */
-
 interface ObjectiveCardProps {
   icon: React.ReactNode;
   title: string;
@@ -75,11 +71,6 @@ const objectives: ObjectiveCardProps[] = [
   },
 ];
 
-
-/* -------------------------------------------------------------------------- */
-/*  Animation Variants                                                        */
-/* -------------------------------------------------------------------------- */
-
 const gridVariants: Variants = {
   hidden: {},
   visible: {
@@ -96,10 +87,6 @@ const cardVariants: Variants = {
     transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] },
   },
 };
-
-/* -------------------------------------------------------------------------- */
-/*  Objective Card                                                            */
-/* -------------------------------------------------------------------------- */
 
 const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
   icon,
@@ -136,7 +123,7 @@ const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
         }}
         className="objective-card"
       >
-        {/* Glow on hover */}
+
         <div
           aria-hidden
           className="objective-card-glow"
@@ -154,7 +141,6 @@ const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
           }}
         />
 
-        {/* Background index number */}
         <span
           aria-hidden
           style={{
@@ -238,10 +224,6 @@ const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
   );
 };
 
-/* -------------------------------------------------------------------------- */
-/*  Section                                                                   */
-/* -------------------------------------------------------------------------- */
-
 export const CoreObjectivesSection: React.FC = () => {
   return (
     <section
@@ -252,7 +234,7 @@ export const CoreObjectivesSection: React.FC = () => {
         overflow: "hidden",
       }}
     >
-      {/* Decorative background texture */}
+
       <div
         aria-hidden
         style={{

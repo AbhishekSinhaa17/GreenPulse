@@ -25,7 +25,6 @@ import { stripeService } from "../../services/stripeService";
 import { useAuth } from "../../hooks/useAuth";
 import type { Charity } from "../../types";
 
-// Default vetted partners (fallback when DB is unseeded)
 const defaultCharities: Charity[] = [
   {
     id: "1",
@@ -89,10 +88,6 @@ const CATEGORY_META: Record<string, { icon: React.ReactNode; color: string }> =
     community: { icon: <Building2 size={13} />, color: "#60A5FA" },
   };
 
-/* -------------------------------------------------------------------------- */
-/*  Animation Variants                                                        */
-/* -------------------------------------------------------------------------- */
-
 const gridVariants: Variants = {
   hidden: {},
   visible: { transition: { staggerChildren: 0.08 } },
@@ -135,7 +130,6 @@ export const CharitiesPage: React.FC = () => {
   const [isFromDatabase, setIsFromDatabase] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  // Standalone Charity Donation State
   const [donatingCharity, setDonatingCharity] = useState<Charity | null>(null);
   const [selectedDonationAmount, setSelectedDonationAmount] =
     useState<number>(2750);
@@ -240,7 +234,7 @@ export const CharitiesPage: React.FC = () => {
           position: "relative",
         }}
       >
-        {/* Ambient glow */}
+
         <div
           aria-hidden
           style={{
@@ -312,7 +306,6 @@ export const CharitiesPage: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* Filter and Search Bar */}
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
@@ -388,7 +381,6 @@ export const CharitiesPage: React.FC = () => {
         </div>
       </motion.div>
 
-      {/* Charity Grid */}
       {isLoading ? (
         <div
           style={{
@@ -532,7 +524,6 @@ export const CharitiesPage: React.FC = () => {
                       {charity.description}
                     </p>
 
-                    {/* Raised progress indicator */}
                     <div style={{ marginBottom: "var(--space-3)" }}>
                       <div
                         style={{
@@ -626,7 +617,6 @@ export const CharitiesPage: React.FC = () => {
         </motion.div>
       )}
 
-      {/* Standalone Direct Charity Donation Modal */}
       <AnimatePresence>
         {donatingCharity && (
           <motion.div
@@ -743,7 +733,6 @@ export const CharitiesPage: React.FC = () => {
                 )}
               </AnimatePresence>
 
-              {/* Donation Preset Chips */}
               <div style={{ marginBottom: "var(--space-4)" }}>
                 <label
                   style={{
@@ -803,7 +792,6 @@ export const CharitiesPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Custom Amount */}
               <div style={{ marginBottom: "var(--space-5)" }}>
                 <Input
                   label="Or Enter Custom Amount (₹)"

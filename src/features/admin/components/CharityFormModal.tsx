@@ -476,7 +476,6 @@ export const CharityFormModal: React.FC<CharityFormModalProps> = ({
           }
         `}</style>
 
-        {/* Basic Info */}
         <div className="cf-section">
           <div className="cf-section-head">
             <FileText size={13} /> Basic Information
@@ -568,7 +567,6 @@ export const CharityFormModal: React.FC<CharityFormModalProps> = ({
           </div>
         </div>
 
-        {/* Media & Links */}
         <div className="cf-section">
           <div className="cf-section-head">
             <ImageIcon size={13} /> Media & Links
@@ -636,7 +634,6 @@ export const CharityFormModal: React.FC<CharityFormModalProps> = ({
           </div>
         </div>
 
-        {/* Settings */}
         <div className="cf-section">
           <div className="cf-section-head">
             <Star size={13} /> Visibility Settings

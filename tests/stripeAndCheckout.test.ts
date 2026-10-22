@@ -1,7 +1,5 @@
 import { describe, it, expect } from 'vitest';
 
-// Pure algorithmic & domain logic validators mirroring Supabase Edge Functions & stripeService
-
 export function validateSubscriptionCheckoutInput(input: {
   userId?: string | null;
   planTier?: string;
@@ -25,12 +23,6 @@ export function validateSubscriptionCheckoutInput(input: {
   return { valid: true };
 }
 
-/**
- * Calculates subscription plan pricing using verified explicit integer minor units (paise).
- * Monthly: ₹2,090 = 209,000 paise.
- * Yearly: ₹20,900 = 2,090,000 paise (includes ₹4,180 / 2 months free discount).
- * Charity pledge is calculated on the full subscription fee.
- */
 export function calculatePlanPricing(planTier: 'monthly' | 'yearly', charityPercentage: number = 10) {
   const basePriceCents = planTier === 'yearly' ? 2090000 : 209000;
   const charityAmountCents = Math.round(basePriceCents * (charityPercentage / 100));
@@ -42,7 +34,7 @@ export function calculatePlanPricing(planTier: 'monthly' | 'yearly', charityPerc
     charityAmountCents,
     prizePoolShareCents,
     platformOpsCents,
-    annualSavingsCents: planTier === 'yearly' ? 209000 * 12 - 2090000 : 0, // 2508000 - 2090000 = 418000 (₹4,180)
+    annualSavingsCents: planTier === 'yearly' ? 209000 * 12 - 2090000 : 0,
   };
 }
 
@@ -72,9 +64,6 @@ export interface WebhookEventRecord {
   errorMessage?: string | null;
 }
 
-/**
- * Validates retryable webhook idempotency state machine
- */
 export function processRetryableWebhookIdempotency(
   ledger: Map<string, WebhookEventRecord>,
   eventId: string
@@ -87,7 +76,7 @@ export function processRetryableWebhookIdempotency(
     if (existing.status === 'processing') {
       return { shouldProcess: false, duplicate: false, inProgress: true };
     }
-    // If failed, allow retry
+
   }
   ledger.set(eventId, { id: eventId, status: 'processing', processedAt: null });
   return { shouldProcess: true, duplicate: false, inProgress: false };
@@ -129,7 +118,7 @@ export function resolveSafeAppUrl(
         return originHeader.replace(/\/$/, '');
       }
     } catch {
-      // Invalid URL format
+
     }
   }
   return 'http://localhost:5173';
@@ -154,7 +143,7 @@ export function applySubscriptionLifecycleTransition(
 }
 
 describe('Phase 4: Stripe Subscriptions, Webhook Idempotency & Charity Accounting', () => {
-  // 1. Checkout Input Validation & Authorization
+
   describe('1. Checkout Input Validation & Authorization', () => {
     it('rejects unauthenticated membership checkout requests', () => {
       const res = validateSubscriptionCheckoutInput({
@@ -209,33 +198,31 @@ describe('Phase 4: Stripe Subscriptions, Webhook Idempotency & Charity Accountin
     });
   });
 
-  // 2. Verified Explicit Integer Minor Currency Units (INR paise)
   describe('2. Verified Subscription Pricing & Full-Fee Charity Accounting', () => {
     it('correctly prices Monthly plan at ₹2,090.00 (209,000 paise) and calculates default 10% charity split (20,900 paise / ₹209)', () => {
       const pricing = calculatePlanPricing('monthly', 10);
-      expect(pricing.basePriceCents).toBe(209000); // 209,000 paise (₹2,090.00)
-      expect(pricing.charityAmountCents).toBe(20900); // 20,900 paise (₹209.00 / 10% of full fee)
-      expect(pricing.prizePoolShareCents).toBe(104500); // 104,500 paise (₹1,045.00 / 50%)
-      expect(pricing.platformOpsCents).toBe(83600); // 83,600 paise (₹836.00 / 40%)
+      expect(pricing.basePriceCents).toBe(209000);
+      expect(pricing.charityAmountCents).toBe(20900);
+      expect(pricing.prizePoolShareCents).toBe(104500);
+      expect(pricing.platformOpsCents).toBe(83600);
     });
 
     it('correctly prices Yearly plan at ₹20,900.00 (2,090,000 paise) with 2 months free savings (₹4,180.00 / 418,000 paise)', () => {
       const pricing = calculatePlanPricing('yearly', 10);
-      expect(pricing.basePriceCents).toBe(2090000); // 2,090,000 paise (₹20,900.00)
-      expect(pricing.annualSavingsCents).toBe(418000); // 418,000 paise (₹4,180.00)
-      expect(pricing.charityAmountCents).toBe(209000); // 209,000 paise (₹2,090.00 / 10% of full fee)
+      expect(pricing.basePriceCents).toBe(2090000);
+      expect(pricing.annualSavingsCents).toBe(418000);
+      expect(pricing.charityAmountCents).toBe(209000);
     });
 
     it('accurately scales voluntary charity contribution increase up to 100%', () => {
       const pricing = calculatePlanPricing('monthly', 25);
-      expect(pricing.charityAmountCents).toBe(52250); // 25% of 209,000 = 52,250 paise (₹522.50)
+      expect(pricing.charityAmountCents).toBe(52250);
 
       const pricing100 = calculatePlanPricing('monthly', 100);
-      expect(pricing100.charityAmountCents).toBe(209000); // 100% of 209,000 = 209,000 paise (₹2,090.00)
+      expect(pricing100.charityAmountCents).toBe(209000);
     });
   });
 
-  // 3. Donation Amount & Charity Eligibility Validation
   describe('3. Donation Amount and Charity Eligibility Validation', () => {
     it('rejects standalone donation if charity ID is missing or charity does not exist or is archived', () => {
       const missing = validateDonationInput({ amountCents: 25000 });
@@ -264,7 +251,7 @@ describe('Phase 4: Stripe Subscriptions, Webhook Idempotency & Charity Accountin
       const tooLow = validateDonationInput({
         charityId: 'charity-1',
         charityExists: true,
-        amountCents: 5000, // ₹50.00 (below ₹110)
+        amountCents: 5000,
       });
       expect(tooLow.valid).toBe(false);
       expect(tooLow.error).toMatch(/between ₹110.00 and ₹11,00,000.00/i);
@@ -279,13 +266,12 @@ describe('Phase 4: Stripe Subscriptions, Webhook Idempotency & Charity Accountin
       const validDonation = validateDonationInput({
         charityId: 'charity-1',
         charityExists: true,
-        amountCents: 25000, // ₹250.00
+        amountCents: 25000,
       });
       expect(validDonation.valid).toBe(true);
     });
   });
 
-  // 4. Canonical Redirect URL Security
   describe('4. Canonical Redirect URL Security & Host Whitelisting', () => {
     it('prioritizes configured canonical application URL and strips trailing slash', () => {
       const url = resolveSafeAppUrl('https://malicious-phishing.com', 'https://greenpulse.org/');
@@ -303,35 +289,28 @@ describe('Phase 4: Stripe Subscriptions, Webhook Idempotency & Charity Accountin
     });
   });
 
-  // 5. Retryable Webhook Idempotency State Machine
   describe('5. Retryable Webhook Idempotency State Machine', () => {
     it('does not mark event completed before side effects succeed and allows retry on failure', () => {
       const ledger = new Map<string, WebhookEventRecord>();
 
-      // 1. Initial attempt starts processing
       const firstAttempt = processRetryableWebhookIdempotency(ledger, 'evt_001');
       expect(firstAttempt.shouldProcess).toBe(true);
       expect(ledger.get('evt_001')?.status).toBe('processing');
 
-      // 2. Simulate failure during side effects -> record marked failed
       ledger.set('evt_001', { id: 'evt_001', status: 'failed', errorMessage: 'DB timeout' });
 
-      // 3. Webhook retry comes in from Stripe -> must allow retry because not completed
       const retryAttempt = processRetryableWebhookIdempotency(ledger, 'evt_001');
       expect(retryAttempt.shouldProcess).toBe(true);
       expect(retryAttempt.duplicate).toBe(false);
 
-      // 4. Side effects succeed -> marked completed
       ledger.set('evt_001', { id: 'evt_001', status: 'completed', processedAt: new Date().toISOString() });
 
-      // 5. Subsequent delivery -> recognizes completed duplicate and skips
       const duplicateDelivery = processRetryableWebhookIdempotency(ledger, 'evt_001');
       expect(duplicateDelivery.shouldProcess).toBe(false);
       expect(duplicateDelivery.duplicate).toBe(true);
     });
   });
 
-  // 6. Database-Enforced Idempotency for Invoices and Sessions
   describe('6. Database-Enforced Idempotency for Donation Ledger', () => {
     it('enforces uniqueness on session ID and recurring invoice ID preventing double accounting', () => {
       const ledgerTable = new Map<string, { charityId: string; amountCents: number }>();
@@ -344,20 +323,17 @@ describe('Phase 4: Stripe Subscriptions, Webhook Idempotency & Charity Accountin
         return { success: true, duplicate: false };
       }
 
-      // First invoice execution
       const inv1 = recordDonation('in_renewal_1001', 'charity-1', 20900);
       expect(inv1.success).toBe(true);
       expect(ledgerTable.size).toBe(1);
 
-      // Webhook retry of the same invoice
       const invRetry = recordDonation('in_renewal_1001', 'charity-1', 20900);
       expect(invRetry.success).toBe(false);
       expect(invRetry.duplicate).toBe(true);
-      expect(ledgerTable.size).toBe(1); // No double contribution
+      expect(ledgerTable.size).toBe(1);
     });
   });
 
-  // 7. Atomic Charity Total Updates
   describe('7. Atomic Charity Total Updates (No Read-Modify-Write)', () => {
     it('atomically increments charity totals avoiding lost updates under concurrency', () => {
       let totalRaisedCents = 100000;
@@ -377,7 +353,6 @@ describe('Phase 4: Stripe Subscriptions, Webhook Idempotency & Charity Accountin
     });
   });
 
-  // 8. Subscription Lifecycle Transitions
   describe('8. Subscription Lifecycle State Machine', () => {
     it('transitions subscription to active on checkout completion or invoice payment', () => {
       expect(applySubscriptionLifecycleTransition('incomplete', 'checkout.session.completed')).toBe('active');

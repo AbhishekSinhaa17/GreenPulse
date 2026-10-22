@@ -455,7 +455,6 @@ export const ReviewClaimModal: React.FC<ReviewClaimModalProps> = ({
           }
         `}</style>
 
-        {/* Prize Hero Header */}
         <div
           className="rc-hero"
           style={{ ["--tier-color" as any]: tierMeta.color }}
@@ -476,7 +475,6 @@ export const ReviewClaimModal: React.FC<ReviewClaimModalProps> = ({
           </span>
         </div>
 
-        {/* Golfer & Path Info */}
         <div className="rc-meta-box">
           <div className="rc-meta-line">
             <Fingerprint size={14} />
@@ -501,7 +499,6 @@ export const ReviewClaimModal: React.FC<ReviewClaimModalProps> = ({
           )}
         </div>
 
-        {/* Scorecard Image Preview */}
         <div className="rc-proof-panel">
           <div className="rc-proof-head">
             <FileImage size={13} />
@@ -529,7 +526,6 @@ export const ReviewClaimModal: React.FC<ReviewClaimModalProps> = ({
           </div>
         </div>
 
-        {/* Rejection Reason Form Field */}
         <div className="rc-field">
           <label className="rc-field-label danger">
             <XCircle size={13} /> Rejection Reason (Required if rejecting proof,
@@ -547,7 +543,6 @@ export const ReviewClaimModal: React.FC<ReviewClaimModalProps> = ({
           </span>
         </div>
 
-        {/* Admin Internal Notes */}
         <div className="rc-field">
           <label className="rc-field-label">
             <StickyNote size={13} /> Admin Internal Review Notes (Optional)
@@ -560,7 +555,6 @@ export const ReviewClaimModal: React.FC<ReviewClaimModalProps> = ({
           />
         </div>
 
-        {/* Decoupled Payment Provider Notice */}
         <div className="rc-notice">
           <ShieldAlert size={15} />
           <span>

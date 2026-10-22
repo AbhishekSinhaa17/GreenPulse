@@ -2,7 +2,6 @@
 @import './reset.css';
 @import './components.css';
 
-/* Global utility classes */
 .flex {
   display: flex;
 }
@@ -60,7 +59,6 @@
 .grid-cols-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .grid-cols-4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
 
-/* Responsive flex direction and alignment helpers */
 @media (min-width: 768px) {
   .md-flex-row {
     flex-direction: row !important;
@@ -108,7 +106,6 @@
 
 .w-full { width: 100%; }
 
-/* Mobile table & horizontal scroller helper */
 .table-responsive {
   width: 100%;
   overflow-x: auto;
@@ -119,7 +116,6 @@
   min-width: 540px;
 }
 
-/* Admin tab strip mobile scroller */
 .admin-tab-strip {
   display: flex;
   gap: var(--space-2);

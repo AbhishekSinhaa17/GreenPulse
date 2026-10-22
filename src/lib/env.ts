@@ -1,9 +1,3 @@
-/**
- * GreenPulse Environment Configuration Module
- * Validates and provides typed access to client-safe environment variables.
- * NEVER import or expose server-side private secrets or service-role keys here.
- */
-
 interface EnvConfig {
   supabaseUrl: string | null;
   supabaseAnonKey: string | null;
@@ -19,7 +13,6 @@ const rawStripePublicKey = import.meta.env.VITE_STRIPE_PUBLIC_KEY;
 const rawAppUrl = import.meta.env.VITE_APP_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5173');
 const rawDemoPayments = import.meta.env.VITE_DEMO_PAYMENTS;
 
-// Detect if URL or Key is missing or using placeholder strings
 const isPlaceholder = (val: unknown): boolean => {
   if (typeof val !== 'string') return true;
   const trimmed = val.trim();

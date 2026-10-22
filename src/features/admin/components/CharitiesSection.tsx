@@ -51,7 +51,6 @@ export const CharitiesSection: React.FC<CharitiesSectionProps> = ({
     "all" | "active" | "archived"
   >("all");
 
-  // Modals state
   const [isCharityModalOpen, setIsCharityModalOpen] = useState(false);
   const [charityModalMode, setCharityModalMode] = useState<"add" | "edit">(
     "add",
@@ -431,7 +430,7 @@ export const CharitiesSection: React.FC<CharitiesSectionProps> = ({
       `}</style>
 
       <Card padding="none" className="charity-card">
-        {/* Header, Search & Add Button */}
+
         <div className="charity-toolbar">
           <div>
             <div className="charity-title-row">
@@ -477,7 +476,6 @@ export const CharitiesSection: React.FC<CharitiesSectionProps> = ({
               />
             </div>
 
-            {/* Category Filter */}
             <select
               className="form-input charity-select"
               value={charityCategoryFilter}
@@ -490,7 +488,6 @@ export const CharitiesSection: React.FC<CharitiesSectionProps> = ({
               <option value="community">Community</option>
             </select>
 
-            {/* Status Filter */}
             <select
               className="form-input charity-select"
               value={charityStatusFilter}
@@ -517,7 +514,6 @@ export const CharitiesSection: React.FC<CharitiesSectionProps> = ({
           </div>
         </div>
 
-        {/* Charities Table */}
         {filteredCharities.length === 0 ? (
           <div className="charity-empty-state">
             <span className="charity-empty-icon">
@@ -650,7 +646,6 @@ export const CharitiesSection: React.FC<CharitiesSectionProps> = ({
         )}
       </Card>
 
-      {/* Safety & RLS Documentation Callout */}
       <div className="integrity-note">
         <ShieldCheck size={16} />
         <span>

@@ -29,12 +29,10 @@ export const adminService = {
       throw new Error('Supabase is not configured.');
     }
 
-    // 1. Guard against self-demotion
     if (currentAdminId && userId === currentAdminId && updates.role === 'subscriber') {
       throw new Error('Action Prohibited: You cannot remove your own administrator privileges.');
     }
 
-    // 2. Validate handicap
     if (updates.handicap !== undefined && updates.handicap !== null) {
       if (updates.handicap < -10.0 || updates.handicap > 54.0) {
         throw new Error('Invalid handicap: WHS index must be between -10.0 and 54.0.');
@@ -43,7 +41,6 @@ export const adminService = {
 
     const client = requireSupabase();
 
-    // Canonical server-side authorization and update procedure
     const { data: rpcData, error: rpcErr } = await client.rpc('admin_update_profile', {
       p_user_id: userId,
       p_full_name: updates.full_name || null,
@@ -151,7 +148,6 @@ export const adminService = {
 
     const client = requireSupabase();
 
-    // Canonical server-side review procedure (audited, atomic)
     const { data: rpcData, error: rpcErr } = await client.rpc('admin_review_winner_claim', {
       p_claim_id: claimId,
       p_decision: decision,
@@ -168,21 +164,16 @@ export const adminService = {
     }
   },
 
-  /**
-   * Retrieves active subscribers with their latest 5 golf scores to feed the Draw Engine simulation.
-   */
   async getEligibleSubscribers(): Promise<EligibleSubscriberEntry[]> {
     if (!env.isSupabaseConfigured) return [];
     const client = requireSupabase();
 
-    // 1. Fetch profiles
     const { data: profiles, error: pErr } = await client
       .from('profiles')
       .select('id, full_name');
     if (pErr) throw pErr;
     if (!profiles || profiles.length === 0) return [];
 
-    // 2. Fetch golf scores
     const { data: scores, error: sErr } = await client
       .from('golf_scores')
       .select('user_id, score, played_at, created_at')
@@ -190,7 +181,6 @@ export const adminService = {
       .order('created_at', { ascending: false });
     if (sErr) throw sErr;
 
-    // Group up to 5 latest scores per user
     const scoresByUser = new Map<string, number[]>();
     for (const row of scores || []) {
       const userList = scoresByUser.get(row.user_id) || [];
@@ -200,7 +190,6 @@ export const adminService = {
       }
     }
 
-    // Filter subscribers who have active scores
     const eligible: EligibleSubscriberEntry[] = [];
     for (const p of profiles) {
       const userScores = scoresByUser.get(p.id) || [];
@@ -216,9 +205,6 @@ export const adminService = {
     return eligible;
   },
 
-  /**
-   * Retrieves latest draw to calculate carried-over jackpot rollover.
-   */
   async getLatestRollover(): Promise<{ lastDraw: MonthlyDraw | null; carriedOverJackpotCents: number }> {
     if (!env.isSupabaseConfigured) {
       return { lastDraw: null, carriedOverJackpotCents: 0 };
@@ -241,11 +227,8 @@ export const adminService = {
     return { lastDraw, carriedOverJackpotCents };
   },
 
-  /**
-   * Publishes official draw results transactionally and idempotently.
-   */
   async publishOfficialDraw(params: {
-    drawMonth: string; // YYYY-MM-01
+    drawMonth: string;
     drawTitle: string;
     drawLogic: DrawLogicMode;
     winningNumbers: [number, number, number, number, number];
@@ -259,7 +242,6 @@ export const adminService = {
     }
     const client = requireSupabase();
 
-    // Check if draw already published for this month
     const { data: existing, error: existErr } = await client
       .from('draws')
       .select('id, status')
@@ -272,7 +254,6 @@ export const adminService = {
       throw new Error(`Draw for month ${params.drawMonth} is already published and cannot be modified.`);
     }
 
-    // Canonical server-side atomic draw publishing procedure
     const { data: rpcData, error: rpcErr } = await client.rpc('publish_monthly_draw', {
       p_draw_month: params.drawMonth,
       p_draw_title: params.drawTitle,
@@ -302,10 +283,6 @@ export const adminService = {
 
     return publishedRecord as MonthlyDraw;
   },
-
-  // ==========================================
-  // Surface 03: Charity CRUD & Archival
-  // ==========================================
 
   async getAllCharitiesAdmin(): Promise<Charity[]> {
     if (!env.isSupabaseConfigured) return [];
@@ -344,7 +321,6 @@ export const adminService = {
 
     const client = requireSupabase();
 
-    // Check slug uniqueness
     const { data: existing } = await client
       .from('charities')
       .select('id')
@@ -408,7 +384,6 @@ export const adminService = {
     }
     const client = requireSupabase();
 
-    // Canonical safe delete or archive procedure
     const { data: rpcData, error: rpcErr } = await client.rpc('safe_delete_charity', {
       p_charity_id: id,
     });
@@ -424,10 +399,6 @@ export const adminService = {
     return { action: rpcData.action, message: rpcData.message };
   },
 
-  // ==========================================
-  // Surface 05: Reports & Analytics
-  // ==========================================
-
   async getPlatformAnalytics(): Promise<PlatformAnalytics | null> {
     if (!env.isSupabaseConfigured) {
       return null;
@@ -435,7 +406,6 @@ export const adminService = {
 
     const client = requireSupabase();
 
-    // Canonical platform aggregation RPC
     const { data: rpcData, error: rpcErr } = await client.rpc('get_platform_analytics');
     if (!rpcErr && rpcData) {
       return rpcData as PlatformAnalytics;

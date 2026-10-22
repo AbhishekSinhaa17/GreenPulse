@@ -556,4 +556,3 @@ export const WinnersSection: React.FC<WinnersSectionProps> = ({
     </div>
   );
 };
-

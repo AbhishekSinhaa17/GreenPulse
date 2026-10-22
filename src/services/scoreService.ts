@@ -2,9 +2,7 @@ import { requireSupabase, env } from '../lib/supabase';
 import type { GolfScore } from '../types';
 
 export const scoreService = {
-  /**
-   * Fetches the latest 5 golf scores for a given user, ordered reverse-chronologically.
-   */
+
   async getScores(userId: string): Promise<GolfScore[]> {
     if (!env.isSupabaseConfigured) {
       return [];
@@ -22,10 +20,6 @@ export const scoreService = {
     return (data || []) as GolfScore[];
   },
 
-  /**
-   * Records a Stableford score (1–45) using the database atomic RPC.
-   * Enforces 1-per-date uniqueness and rolling 5-score FIFO retention in PostgreSQL.
-   */
   async submitScore(score: number, playedAt: string, courseName?: string): Promise<GolfScore[]> {
     if (!env.isSupabaseConfigured) {
       throw new Error(
@@ -39,7 +33,6 @@ export const scoreService = {
 
     const client = requireSupabase();
 
-    // Canonical atomic PostgreSQL RPC record_golf_score
     const { data: rpcData, error: rpcError } = await client.rpc('record_golf_score', {
       p_score: score,
       p_played_at: playedAt,
@@ -61,9 +54,6 @@ export const scoreService = {
     return this.getScores(user.id);
   },
 
-  /**
-   * Deletes a golf score by ID.
-   */
   async deleteScore(scoreId: string): Promise<void> {
     if (!env.isSupabaseConfigured) {
       throw new Error('Database is not connected.');
@@ -73,9 +63,6 @@ export const scoreService = {
     if (error) throw error;
   },
 
-  /**
-   * Updates an existing round's score or course.
-   */
   async updateScore(scoreId: string, score: number, courseName?: string): Promise<void> {
     if (!env.isSupabaseConfigured) {
       throw new Error('Database is not connected.');

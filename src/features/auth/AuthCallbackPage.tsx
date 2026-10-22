@@ -28,7 +28,7 @@ export const AuthCallbackPage: React.FC = () => {
     let isCancelled = false;
 
     const processAuth = async () => {
-      // 1. Check for errors in query params or URL hash
+
       const searchParams = new URLSearchParams(window.location.search);
       const hash = window.location.hash.substring(1);
       const hashParams = new URLSearchParams(hash);
@@ -68,7 +68,7 @@ export const AuthCallbackPage: React.FC = () => {
       }
 
       try {
-        // 2. Retrieve session from Supabase client
+
         const {
           data: { session },
           error,
@@ -79,7 +79,7 @@ export const AuthCallbackPage: React.FC = () => {
         }
 
         if (session?.user) {
-          // 3. Ensure profile is provisioned idempotently
+
           const profile = await authService.ensureUserProfile(session.user);
           if (!isCancelled) {
             const isAdminUser = profile.role === "admin";
@@ -92,7 +92,6 @@ export const AuthCallbackPage: React.FC = () => {
           return;
         }
 
-        // 4. If getSession didn't resolve immediately, listen for onAuthStateChange
         const {
           data: { subscription },
         } = supabase.auth.onAuthStateChange(async (event, newSession) => {
@@ -112,7 +111,6 @@ export const AuthCallbackPage: React.FC = () => {
           }
         });
 
-        // 5. Timeout safety fallback after 8 seconds
         const timer = setTimeout(() => {
           if (!isCancelled && isProcessing) {
             subscription.unsubscribe();

@@ -52,7 +52,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode }) => {
     (location.state as { from?: { pathname: string } })?.from?.pathname ||
     "/dashboard";
 
-  // If already authenticated and profile has finished loading, redirect directly to role-appropriate route
   useEffect(() => {
     if (!isAuthLoading && user && profile) {
       const dest = profile.role === "admin" ? "/admin" : "/dashboard";
@@ -72,7 +71,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode }) => {
     setIsGoogleLoading(true);
     try {
       await signInWithGoogle();
-      // Supabase OAuth redirects the browser window
+
     } catch (err: unknown) {
       setIsGoogleLoading(false);
       const message =
@@ -169,7 +168,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode }) => {
       </div>
 
       <Card className="ap-card">
-        {/* Membership Plan Switcher for Signup/Subscribe */}
+
         {mode !== "login" && (
           <div className="ap-plan-grid">
             <div
@@ -208,7 +207,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode }) => {
           </div>
         )}
 
-        {/* Google OAuth Login Button */}
         <Button
           variant="outline"
           type="button"

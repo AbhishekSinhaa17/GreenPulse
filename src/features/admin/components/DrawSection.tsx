@@ -223,7 +223,6 @@ export const DrawSection: React.FC<DrawSectionProps> = ({
           animation: dsSpin 6s linear infinite;
         }
 
-        /* Mode toggle */
         .ds-mode-toggle {
           position: relative;
           display: inline-flex;
@@ -273,7 +272,6 @@ export const DrawSection: React.FC<DrawSectionProps> = ({
           color: #fff;
         }
 
-        /* Parameter controls */
         .ds-params-grid {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -481,7 +479,6 @@ export const DrawSection: React.FC<DrawSectionProps> = ({
           color: #2e7d32;
         }
 
-        /* History table */
         .ds-history-card {
           overflow: hidden;
         }
@@ -557,7 +554,6 @@ export const DrawSection: React.FC<DrawSectionProps> = ({
             </p>
           </div>
 
-          {/* Mode Toggle: Random vs Algorithmic */}
           <div className="ds-mode-toggle">
             <div
               className={`ds-mode-indicator ${drawMode === "random" ? "rand" : "alg"}`}
@@ -577,7 +573,6 @@ export const DrawSection: React.FC<DrawSectionProps> = ({
           </div>
         </div>
 
-        {/* Parameter Controls */}
         <div className="ds-params-grid">
           <div className="ds-param-field">
             <label>
@@ -631,7 +626,6 @@ export const DrawSection: React.FC<DrawSectionProps> = ({
           </div>
         </div>
 
-        {/* Simulation Runner Box */}
         <div className="ds-sim-box">
           <div className="ds-sim-header">
             <div className="ds-sim-title-row">
@@ -673,7 +667,6 @@ export const DrawSection: React.FC<DrawSectionProps> = ({
             </div>
           </div>
 
-          {/* Number Balls Display */}
           {simulationResult ? (
             <div>
               <div className="ds-balls-row">
@@ -692,7 +685,6 @@ export const DrawSection: React.FC<DrawSectionProps> = ({
                 ))}
               </div>
 
-              {/* Simulation Result Preview Grid */}
               <div className="ds-tier-grid">
                 <div
                   className="ds-tier-card"
@@ -796,7 +788,6 @@ export const DrawSection: React.FC<DrawSectionProps> = ({
         </div>
       </Card>
 
-      {/* Published Historical Draws */}
       <Card padding="none" className="ds-history-card">
         <div className="ds-history-head">
           <span className="ds-history-head-icon">

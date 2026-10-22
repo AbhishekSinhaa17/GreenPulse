@@ -1,9 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { PlatformAnalytics } from '../src/types';
 
-/**
- * Pure helper simulating the safe charity deletion/archival decision logic (PRD § 11.3).
- */
 export function determineCharityDeletionStrategy(params: {
   charityId: string;
   hasPledges: boolean;
@@ -21,9 +18,6 @@ export function determineCharityDeletionStrategy(params: {
   };
 }
 
-/**
- * Pure helper validating charity input parameters.
- */
 export function validateCharityInput(input: {
   name: string;
   slug: string;
@@ -55,9 +49,6 @@ export function validateCharityInput(input: {
   return { valid: true, cleanSlug };
 }
 
-/**
- * Pure helper verifying self-demotion protection (PRD § 11.1).
- */
 export function canUpdateUserRole(params: {
   targetUserId: string;
   currentAdminId: string;
@@ -72,9 +63,6 @@ export function canUpdateUserRole(params: {
   return { allowed: true };
 }
 
-/**
- * Pure analytics calculation helper.
- */
 export function aggregatePlatformMetrics(data: {
   profilesCount: number;
   subscriptions: { status: string }[];
@@ -243,7 +231,7 @@ describe('PRD § 11.5 Reports & Platform Analytics Aggregation', () => {
     const metrics = aggregatePlatformMetrics(mockData);
 
     expect(metrics.total_users).toBe(250);
-    expect(metrics.total_subscribers).toBe(3); // only 'active'
+    expect(metrics.total_subscribers).toBe(3);
     expect(metrics.subscription_breakdown.active).toBe(3);
     expect(metrics.subscription_breakdown.past_due).toBe(1);
     expect(metrics.subscription_breakdown.canceled).toBe(1);
