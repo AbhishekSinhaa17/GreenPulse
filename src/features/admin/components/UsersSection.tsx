@@ -257,7 +257,11 @@ export const UsersSection: React.FC<UsersSectionProps> = ({
           transition: background 0.2s ease;
         }
 
-        .us-row::before {
+        .us-row td:first-child {
+          position: relative;
+        }
+
+        .us-row td:first-child::before {
           content: '';
           position: absolute;
           left: 0;
@@ -272,7 +276,7 @@ export const UsersSection: React.FC<UsersSectionProps> = ({
           background: rgba(46,125,50,0.035);
         }
 
-        .us-row:hover::before {
+        .us-row:hover td:first-child::before {
           background: #2e7d32;
         }
 

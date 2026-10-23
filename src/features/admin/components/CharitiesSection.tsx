@@ -272,7 +272,11 @@ export const CharitiesSection: React.FC<CharitiesSectionProps> = ({
           transition: background 0.2s ease;
         }
 
-        .charity-row::before {
+        .charity-row td:first-child {
+          position: relative;
+        }
+
+        .charity-row td:first-child::before {
           content: '';
           position: absolute;
           left: 0;
@@ -287,7 +291,7 @@ export const CharitiesSection: React.FC<CharitiesSectionProps> = ({
           background: rgba(46,125,50,0.035);
         }
 
-        .charity-row:hover::before {
+        .charity-row:hover td:first-child::before {
           background: #2e7d32;
         }
 

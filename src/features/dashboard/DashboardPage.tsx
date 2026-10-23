@@ -1681,11 +1681,11 @@ export const DashboardPage: React.FC = () => {
           transition: box-shadow 0.3s ease;
         }
 
-        .dp-score-row {
+        .dp-score-row td:first-child {
           position: relative;
         }
 
-        .dp-score-row::before {
+        .dp-score-row td:first-child::before {
           content: '';
           position: absolute;
           left: 0;
@@ -1698,7 +1698,7 @@ export const DashboardPage: React.FC = () => {
           transition: transform 0.25s ease;
         }
 
-        .dp-score-row:hover::before {
+        .dp-score-row:hover td:first-child::before {
           transform: scaleY(1);
         }
 
@@ -1729,7 +1729,7 @@ export const DashboardPage: React.FC = () => {
 
         @media (prefers-reduced-motion: reduce) {
           .dp-orb, .dp-money-shimmer, .dp-prize-amount, .dp-ring-glow,
-          .dp-error-icon, .dp-reject-alert, .dp-score-row::before,
+          .dp-error-icon, .dp-reject-alert, .dp-score-row td:first-child::before,
           .dp-module-card::before {
             animation: none !important;
             transition: none !important;

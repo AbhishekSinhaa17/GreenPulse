@@ -235,7 +235,11 @@ export const WinnersSection: React.FC<WinnersSectionProps> = ({
           transition: background 0.2s ease;
         }
 
-        .ws-row::before {
+        .ws-row td:first-child {
+          position: relative;
+        }
+
+        .ws-row td:first-child::before {
           content: '';
           position: absolute;
           left: 0;
@@ -250,7 +254,7 @@ export const WinnersSection: React.FC<WinnersSectionProps> = ({
           background: rgba(46,125,50,0.035);
         }
 
-        .ws-row:hover::before {
+        .ws-row:hover td:first-child::before {
           background: #2e7d32;
         }
 
